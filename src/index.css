@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: poppins;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+@layer components{
+      .input-box{
+          @apply border border-gray-600 py-0.5 px-1 
+                  focus:outline-none focus:border-[#003a88] focus:border-2 
+                  valid:border-2 valid:border-[#003a88]
+                  transition-colors ease-in duration-500 ;
+      }
+      
+  }
+
+  
+body {
+  margin: 0;
+  padding: 0;
+}
+
