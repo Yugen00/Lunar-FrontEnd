@@ -1,6 +1,6 @@
 import React,{Suspense, lazy} from 'react';
 import './App.css';
-import {BrowserRouter, Route, Routes} from 'react-router-dom';
+import {HashRouter as Router, Route, Routes} from 'react-router-dom';
 
 
 /*---- All lazy import so that page download in client system only when redirected -----*/
@@ -60,7 +60,7 @@ import LazyLoader from './utils/LazyLoader';
 function App() {
   return (
     <>
-      <BrowserRouter>
+      <Router>
       <ToastContainer position='top-right' autoClose={3000} /> {/* Global Toast Container */}
 
         <Routes>
@@ -143,7 +143,7 @@ function App() {
 
         </Routes>
 
-      </BrowserRouter>
+      </Router>
     </>
   );
 }

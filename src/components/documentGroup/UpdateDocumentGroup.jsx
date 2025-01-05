@@ -5,19 +5,41 @@ import { showToast } from '../../utils/ReactToast';
 import handleCatchError from '../../utils/handleCatchError';
 import Loader from '../../utils/Loader';
 import CLoader from '../../utils/CLoader';
+import { verifyTokenizedID } from '../../utils/encryption';
 
 function UpdateDocumentGroup() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [formData, setFormData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [decryptedId,setDecryptedId] = useState('');
+    const workWithToken = async() =>{
+        try {
+            const decodedId = verifyTokenizedID(id)
+            console.log(decodedId)
+            if (!decodedId) {
+                throw new Error();
+            } else {
+                setDecryptedId(decodedId);
+                fetchDocumentGroup(decodedId);
+            }
+            
+        } catch (error) {
+            console.log(error)
+            showToast("Invalid request. Please try again later!", "error");
+            navigate("/error");
+        }
+    }
+    useEffect(() => {
+        workWithToken();
+    }, [id]);
 
     //for fectching the data at first
-    const fetchDocumentGroup = async () => {
+    const fetchDocumentGroup = async (decodedId) => {
 
         try {
             setIsLoading(true);
-            const response = await customAxios.get(`/documentGroup/getItem/${id}`);
+            const response = await customAxios.get(`/documentGroup/getItem/${decodedId}`);
             const dt = await response.data;
             setFormData(dt);
             console.log(dt)
@@ -48,10 +70,6 @@ function UpdateDocumentGroup() {
         }
     };
 
-    useEffect(() => {
-        document.title = "documentGroup Update"
-        fetchDocumentGroup();
-    }, [])
     return (
         <>
             {isLoading ? (

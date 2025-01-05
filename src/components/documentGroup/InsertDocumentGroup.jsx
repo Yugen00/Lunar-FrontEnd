@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { data, useNavigate, useSearchParams } from 'react-router-dom';
 import customAxios from '../../utils/http';
 import { showToast } from '../../utils/ReactToast';
 import handleCatchError from '../../utils/handleCatchError';
 import CLoader from '../../utils/CLoader';
 import { use } from 'react';
+import { verifyTokenizedID } from '../../utils/encryption';
 
 function InsertDocumentGroup() {
   const navigate = useNavigate();
@@ -12,13 +13,34 @@ function InsertDocumentGroup() {
   const [searchParams] = useSearchParams();
 
   // Retrieve the 'id' parameter and set to the ParentId
-  const [ParentId] = useState(searchParams.get("id"));
-  const [ParentName] = useState(searchParams.get("name"));
+  const [ParentId,setParentId] = useState('');
+  const [ParentName,setParentName] = useState('');
 
-  const [formData, setFormData] = useState({
-    ParentId,ParentName
-  });
-  const [isLoading,setIsLoading] = useState(false);
+  useEffect(() => {
+    try {
+      //donot do anything if it is new insert
+      if(searchParams.size != 0){
+        const decodedId = verifyTokenizedID(searchParams.get("id"))
+        const decodedName = verifyTokenizedID(searchParams.get("name"));
+
+        if (!decodedId || !decodedName) {
+          throw new Error();
+        } else {
+          setParentId(decodedId);
+          setParentName(decodedName);
+          setFormData({ParentId:decodedId, ParentName:decodedName})
+        }
+      }
+
+    } catch (error) {
+      console.log(error)
+      showToast("Invalid request. Please try again later!", "error");
+      navigate("/error");
+    }
+  }, [])
+
+  const [formData, setFormData] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     console.log(formData)
@@ -30,16 +52,16 @@ function InsertDocumentGroup() {
     try {
       setIsLoading(true);
       const response = await customAxios.post('/documentGroup/insert', formData);
-      if(response.status == 200){
-        showToast("Document Group Inserted Successfully","success");
+      if (response.status == 200) {
+        showToast("Document Group Inserted Successfully", "success");
         setIsLoading(false);
         navigate('/documentGroup');
       }
-      
+
     } catch (error) {
-      handleCatchError(error,navigate);
+      handleCatchError(error, navigate);
     }
-    finally{
+    finally {
       setIsLoading(false);
     }
   };
@@ -49,17 +71,17 @@ function InsertDocumentGroup() {
       <div className='flex mx-auto w-full justify-center'>
         <div className='w-full border sm:max-w-xl border-indigo-400 m-4 p-4 sm:m-10 '>
           <div className='flex justify-end'>
-              <button
+            <button
               className="close-btn text-2xl text-indigo-700 font-extrabold hover:text-red-300"
               onClick={() => navigate('/documentGroup')}
-              >
+            >
               X
-              </button>
-          </div>  
+            </button>
+          </div>
           <div className="mt-4">
             {/* Heading */}
             <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-              Insert Document Group
+              {ParentId? `Add Sub Document`:`Insert New Document`}
             </h1>
 
             <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -93,9 +115,9 @@ function InsertDocumentGroup() {
               </div>
 
 
-              
+
               {/* Parent Name */}
-              { ParentId && ParentName && <div>
+              {ParentId && ParentName && <div>
                 <label htmlFor="ParentName" className="block text-lg font-medium text-gray-800 mb-1">
                   Parent Name
                 </label>
@@ -112,7 +134,7 @@ function InsertDocumentGroup() {
               </div>}
 
               {/* Office Name */}
-              <div>
+              <div className={ ParentId? ``:`md:col-span-2`}>
                 <label htmlFor="OfficeName" className="block text-lg font-medium text-gray-800 mb-1">
                   Office Name
                 </label>
@@ -125,7 +147,7 @@ function InsertDocumentGroup() {
                   required
                 />
               </div>
-              
+
 
               {/* Buttons */}
               <div className="md:col-span-2 flex flex-wrap justify-end gap-4">
@@ -135,7 +157,7 @@ function InsertDocumentGroup() {
                 >
                   Clear
                 </button>
-                {isLoading ? (<CLoader />) :(
+                {isLoading ? (<CLoader />) : (
                   <button
                     type="submit"
                     onClick={handleSubmit}

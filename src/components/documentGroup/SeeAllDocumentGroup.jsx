@@ -4,22 +4,43 @@ import DocumentGroupCard from './DocumentGroupCard';
 import handleCatchError from '../../utils/handleCatchError';
 import customAxios from '../../utils/http';
 import Loader from '../../utils/Loader';
+import { verifyTokenizedID } from '../../utils/encryption';
 
 function SeeAllDocumentGroup() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [formData, setFormData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [isSeeAll,setIsSeeAll] = useState(true);
+    const [isSeeAll] = useState(true);
+    const [decryptedId, setDecryptedId] = useState('');
+
+    const workWithToken = async () => {
+        try {
+            const decodedId = verifyTokenizedID(id)
+
+            if (!decodedId) {
+                throw new Error();
+            } else {
+                setDecryptedId(decodedId);
+                fetchDocumentGroup(decodedId);
+            }
+
+        } catch (error) {
+            showToast("Invalid request. Please try again later!", "error");
+            navigate("/error");
+        }
+    }
+    useEffect(() => {
+        workWithToken();
+    }, [id]);
 
     //for fectching the data at first
-    const fetchDocumentGroup = async () => {
+    const fetchDocumentGroup = async (decodedId) => {
         try {
             setIsLoading(true);
-            const response = await customAxios.get(`/documentGroup/getItem/${id}`);
+            const response = await customAxios.get(`/documentGroup/getItem/${decodedId}`);
             const dt = await response.data;
             setFormData(dt);
-            console.log(dt)
             setIsLoading(false);
 
         }
@@ -31,19 +52,16 @@ function SeeAllDocumentGroup() {
         }
     }
 
-    useEffect(() => {
-        fetchDocumentGroup();
-    }, [])
-  return (
-    <>
-        { isLoading? (<Loader/>):(
-            <div className="flex flex-col items-center justify-center h-full">
+    return (
+        <>
+            {isLoading ? (<Loader />) : (
+                <div className="flex flex-col items-center justify-center h-full">
                     <p className="text-2xl">Detail of Document Group</p>
-                    <DocumentGroupCard data={formData} isSeeAll={isSeeAll}/>
-            </div>
-        )}
-    </>
-  )
+                    <DocumentGroupCard data={formData} isSeeAll={isSeeAll} />
+                </div>
+            )}
+        </>
+    )
 }
 
 export default SeeAllDocumentGroup

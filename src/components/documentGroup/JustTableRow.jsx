@@ -1,13 +1,24 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import customAxios from '../../utils/http';
 import { showToast } from '../../utils/ReactToast';
 import handleCatchError from '../../utils/handleCatchError';
 import DeleteItem from '../DeleteItem';
+import { createTokenizedID } from '../../utils/encryption';
 
-function JustTableRow({ data, handleDataChange, toggleChildren, index, childIndex,level}) {
+function JustTableRow({ data, handleDataChange, toggleChildren, index, childIndex, level }) {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tokenizedId, setTokenizedId] = useState('');
+  const [tokenizedName, setTokenizedName] = useState('');
+
+  useEffect(() => {
+    const tknId = data?.GroupId ? createTokenizedID(data.GroupId.toString()) : '';
+    const tknName = data?.GroupName ? createTokenizedID(data.GroupName.toString()) : '';
+    setTokenizedId(tknId);
+    setTokenizedName(tknName);
+  }, [])
+
   const handleModal = () => {
     setIsModalOpen(!isModalOpen);
   };
@@ -29,41 +40,46 @@ function JustTableRow({ data, handleDataChange, toggleChildren, index, childInde
   const getHierarchicalIndex = (index, childIndex) => {
     let indexString = `${index + 1}`; // Main index
     childIndex.forEach((childIdx) => {
-        indexString += `.${childIdx + 1}`; // Add child index at the current level
+      indexString += `.${childIdx + 1}`; // Add child index at the current level
     });
     return indexString;
   };
 
   // List of colors for each level
-  const levelColors = ['bg-white','bg-cyan-100','bg-yellow-100', 'bg-green-100'];
+  const levelColors = ['bg-white', 'bg-cyan-100', 'bg-yellow-100', 'bg-green-100'];
 
   // Get the background color based on the level
   const getBackgroundColor = (level) => {
     return levelColors[level % levelColors.length]; // Loop through the list if there are more levels than colors
   };
 
-   // Determine the background color depending on whether the row is a child or not
-   const backgroundColor = childIndex ? getBackgroundColor(level) : '';
+  // Determine the background color depending on whether the row is a child or not
+  const backgroundColor = childIndex ? getBackgroundColor(level) : '';
 
   return (
     <>
       <tr className={backgroundColor}>
         <td className={`px-3 py-2 whitespace-nowrap  pl-[${level * 50}px]`}>
-            {getHierarchicalIndex(index, childIndex)} {/* Render hierarchical index */}
+          {getHierarchicalIndex(index, childIndex)} {/* Render hierarchical index */}
         </td>
-        <td className="px-3 py-2 whitespace-nowrap">{data.GroupName}</td>
+        {/* <td className="px-3 py-2 whitespace-nowrap">{data.GroupName}</td> */}
         <td className="px-3 py-2 text-ellipsis whitespace-nowrap cursor-pointer"
-          onClick={() => navigate(`/documentGroup/seeDetail/${data.GroupId}`)}
+          onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
+          title="Click to see full details">
+          {data?.GroupName?.length > 15 ? (`${data.GroupName.slice(0, 15)} ...`) : (data.GroupName)}
+        </td>
+        <td className="px-3 py-2 text-ellipsis whitespace-nowrap cursor-pointer"
+          onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
           title="Click to see full details">
           {data?.GroupDescription?.length > 15 ? (`${data.GroupDescription.slice(0, 15)} ...`) : (data.GroupDescription)}
         </td>
         <td className="px-3 py-2 whitespace-nowrap cursor-pointer"
-          onClick={() => navigate(`/documentGroup/seeDetail/${data.GroupId}`)}
+          onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
           title="Click to see full details">
           {data?.OfficeName?.length > 15 ? (`${data.OfficeName.slice(0, 15)} ...`) : (data.OfficeName)}
         </td>
         <td className="px-3 py-2 whitespace-nowrap cursor-pointer"
-          onClick={() => navigate(`/documentGroup/seeDetail/${data.GroupId}`)}
+          onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
           title="Click to see full details">
           {data?.ParentName?.length > 15 ? (`${data.ParentName.slice(0, 15)} ...`) : (data.ParentName || "Self")}
         </td>
@@ -75,7 +91,7 @@ function JustTableRow({ data, handleDataChange, toggleChildren, index, childInde
         <td className="px-3 py-2 whitespace-nowrap">
           {
             data.IsActive && (
-              <Link to={`/documentGroup/update/${data.GroupId}`}>
+              <Link to={`/documentGroup/update/${encodeURIComponent(tokenizedId)}`}>
                 <button className="px-4 py-2 z-10 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500 focus:outline-none focus:shadow-outline-blue active:bg-blue-600 transition duration-150 ease-in-out">
                   Edit
                 </button>
@@ -91,7 +107,7 @@ function JustTableRow({ data, handleDataChange, toggleChildren, index, childInde
           }
           {
             data.IsActive && (
-              <Link to={`/documentGroup/insert?id=${data?.GroupId}&name=${data?.GroupName}`}>
+              <Link to={`/documentGroup/insert?id=${encodeURIComponent(tokenizedId)}&name=${encodeURIComponent(tokenizedName)}`}>
                 <button className="ml-2 px-4 py-2 z-10 font-medium text-white bg-green-600 rounded-md hover:bg-green-500 focus:outline-none focus:shadow-outline-blue active:bg-blue-600 transition duration-150 ease-in-out">
                   <i className='bx bx-plus-medical mr-1'></i> Sub-Doc
                 </button>

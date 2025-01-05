@@ -32,7 +32,6 @@ function GetDocumentGroup() {
       const response = await customAxios.get(`/DocumentGroup/GetList${showBlocked}`);
       const dt = await response.data;
       const buildedData= buildHierarchy(dt);
-      console.log(buildedData)
       setDatas(buildedData);
       setFilteredData(buildedData);
     } catch (error) {
