@@ -4,9 +4,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { showToast } from "../utils/ReactToast";
 import handleCatchError from "../utils/handleCatchError";
 import CLoader from "../utils/CLoader";
+import { useAuth } from "../contexts/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
+  const {login} = useAuth();
+
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     UserName: "",
@@ -26,10 +29,15 @@ const Login = () => {
       const response = await customAxios.post("/auth/login", formData);
       if (response.status == 200) {
         const token = await response.data.Token;
-        localStorage.setItem('authToken', token);
-        showToast("Login Successfully !!", "success");
-        setIsLoading(false);
+        const displayName = await response.data.DisplayName;
+
+        //setting in the AuthContext
+        login(token,displayName);
+
         navigate('/');
+        showToast("Login Successfully !!", "success");
+
+        setIsLoading(false);
       }
     }
     catch (error) {

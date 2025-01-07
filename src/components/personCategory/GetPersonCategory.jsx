@@ -32,6 +32,7 @@ function GetPersonCategory() {
       const response = await customAxios.get(`/PersonCategory/GetList${showBlocked}`);
       const dt = await response.data;
       setDatas(dt);
+      console.log(dt)
       setFilteredData(dt);
     } catch (error) {
       handleCatchError(error, navigate);
@@ -45,7 +46,7 @@ function GetPersonCategory() {
   };
 
   useEffect(() => {
-    document.title = "Certificate Type List";
+    document.title = "Person Category List";
     fetchPersonCategory();
   }, [showBlocked]);
 

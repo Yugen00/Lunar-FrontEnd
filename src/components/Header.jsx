@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { showToast } from "../utils/ReactToast";
+import { useAuth } from "../contexts/AuthContext";
 
 const Header = () => {
+  const {logout} = useAuth();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-
+  const [displayName] = useState(localStorage.getItem('DisplayName'));
   // Toggle Sidebar Menu
   const toggleMobileMenu = () => {
     document.querySelector(".sidebar").classList.toggle("-translate-x-full");
@@ -22,10 +24,10 @@ const Header = () => {
   //logout
   const navigate = useNavigate();
   
-  const handleLogout = () => {
-    localStorage.removeItem("authToken");
+  const handleLogout = async () => {
+    //auth context logout
+    logout();
     showToast("Logged Out Successfully", "success");
-    navigate("/login");
   };
   return (
     <header
@@ -81,7 +83,7 @@ const Header = () => {
                   alt="Admin"
                 />
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-800">Admin</h4>
+                  <h4 className="text-lg font-semibold text-gray-800">{displayName}</h4>
                   <p className="text-sm text-gray-500">admin@example.com</p>
                 </div>
               </div>

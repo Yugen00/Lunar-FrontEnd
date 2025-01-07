@@ -45,7 +45,7 @@ function GetFeeTopic() {
   };
 
   useEffect(() => {
-    document.title = "Certificate Type List";
+    document.title = "FeeTopic List";
     fetchFeeTopic();
   }, [showBlocked]);
 

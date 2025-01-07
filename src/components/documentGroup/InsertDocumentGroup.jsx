@@ -13,13 +13,13 @@ function InsertDocumentGroup() {
   const [searchParams] = useSearchParams();
 
   // Retrieve the 'id' parameter and set to the ParentId
-  const [ParentId,setParentId] = useState('');
-  const [ParentName,setParentName] = useState('');
+  const [ParentId, setParentId] = useState('');
+  const [ParentName, setParentName] = useState('');
 
   useEffect(() => {
     try {
       //donot do anything if it is new insert
-      if(searchParams.size != 0){
+      if (searchParams.size != 0) {
         const decodedId = verifyTokenizedID(searchParams.get("id"))
         const decodedName = verifyTokenizedID(searchParams.get("name"));
 
@@ -28,12 +28,11 @@ function InsertDocumentGroup() {
         } else {
           setParentId(decodedId);
           setParentName(decodedName);
-          setFormData({ParentId:decodedId, ParentName:decodedName})
+          setFormData({ ParentId: decodedId, ParentName: decodedName })
         }
       }
 
     } catch (error) {
-      console.log(error)
       showToast("Invalid request. Please try again later!", "error");
       navigate("/error");
     }
@@ -43,8 +42,20 @@ function InsertDocumentGroup() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
-    console.log(formData)
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    // Convert the AllowMultipleFilesUpload field to a boolean
+    if (name === "AllowMultipleFilesUpload") {
+      setFormData({
+        ...formData,
+        [name]: value === "true",  // Convert string "true" to boolean true, and "false" to false
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -81,7 +92,7 @@ function InsertDocumentGroup() {
           <div className="mt-4">
             {/* Heading */}
             <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
-              {ParentId? `Add Sub Document`:`Insert New Document`}
+              {ParentId ? `Add Sub Document` : `Insert New Document`}
             </h1>
 
             <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -114,7 +125,36 @@ function InsertDocumentGroup() {
                 ></textarea>
               </div>
 
+              {/* Allowing Multiple Files */}
+              <div>
+                <label htmlFor="AllowMultipleFilesUpload" className="block text-lg font-medium text-gray-800 mb-1">
+                  Allow Multiple Upload
+                </label>
+                <select id="AllowMultipleFilesUpload"
+                  name="AllowMultipleFilesUpload"
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-100"
+                  required>
+                    <option value="false">False</option>
+                    <option value="true">True</option>
+                </select>
+              </div>
 
+              {/* For Max Count */}
+              <div>
+                <label htmlFor="MaxCount" className="block text-lg font-medium text-gray-800 mb-1">
+                  Max Count
+                </label>
+                <input
+                  type="number"
+                  id="MaxCount"
+                  name="MaxCount"
+                  defaultValue={1}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-100"
+                  required
+                />
+              </div>
 
               {/* Parent Name */}
               {ParentId && ParentName && <div>
@@ -134,7 +174,7 @@ function InsertDocumentGroup() {
               </div>}
 
               {/* Office Name */}
-              <div className={ ParentId? ``:`md:col-span-2`}>
+              <div className={!ParentId && !ParentName ? `md:col-span-2` : ``}>
                 <label htmlFor="OfficeName" className="block text-lg font-medium text-gray-800 mb-1">
                   Office Name
                 </label>
@@ -147,6 +187,7 @@ function InsertDocumentGroup() {
                   required
                 />
               </div>
+
 
 
               {/* Buttons */}

@@ -12,18 +12,17 @@ function UpdateDocumentGroup() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [decryptedId,setDecryptedId] = useState('');
-    const workWithToken = async() =>{
+    const [decryptedId, setDecryptedId] = useState('');
+    const workWithToken = async () => {
         try {
             const decodedId = verifyTokenizedID(id)
-            console.log(decodedId)
             if (!decodedId) {
                 throw new Error();
             } else {
                 setDecryptedId(decodedId);
                 fetchDocumentGroup(decodedId);
             }
-            
+
         } catch (error) {
             console.log(error)
             showToast("Invalid request. Please try again later!", "error");
@@ -42,7 +41,6 @@ function UpdateDocumentGroup() {
             const response = await customAxios.get(`/documentGroup/getItem/${decodedId}`);
             const dt = await response.data;
             setFormData(dt);
-            console.log(dt)
             setIsLoading(false);
 
         }
@@ -53,8 +51,22 @@ function UpdateDocumentGroup() {
             setIsLoading(false);
         }
     }
+
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+
+        // Convert the AllowMultipleFilesUpload field to a boolean
+        if (name === "AllowMultipleFilesUpload") {
+            setFormData({
+                ...formData,
+                [name]: value === "true",  // Convert string "true" to boolean true, and "false" to false
+            });
+        } else {
+            setFormData({
+                ...formData,
+                [name]: value,
+            });
+        }
     };
 
     const handleUpdate = async (e) => {
@@ -79,12 +91,12 @@ function UpdateDocumentGroup() {
                     <div className='w-full border sm:max-w-xl border-indigo-400 m-4 p-4 sm:m-10'>
                         <div className='flex justify-end'>
                             <button
-                            className="close-btn text-2xl text-indigo-700 font-extrabold hover:text-red-300"
-                            onClick={() => navigate('/documentGroup')}
+                                className="close-btn text-2xl text-indigo-700 font-extrabold hover:text-red-300"
+                                onClick={() => navigate('/documentGroup')}
                             >
-                            X
+                                X
                             </button>
-                        </div> 
+                        </div>
                         <div className="mt-4">
                             {/* Heading */}
                             <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
@@ -123,8 +135,40 @@ function UpdateDocumentGroup() {
                                     ></textarea>
                                 </div>
 
+                                {/* Allowing Multiple Files */}
+                                <div>
+                                    <label htmlFor="AllowMultipleFilesUpload" className="block text-lg font-medium text-gray-800 mb-1">
+                                        Allow Multiple Upload
+                                    </label>
+                                    <select id="AllowMultipleFilesUpload"
+                                        name="AllowMultipleFilesUpload"
+                                        value={formData?.AllowMultipleFilesUpload}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-100"
+                                        required>
+                                        <option value="false">False</option>
+                                        <option value="true">True</option>
+                                    </select>
+                                </div>
+
+                                {/* For Max Count */}
+                                <div>
+                                    <label htmlFor="MaxCount" className="block text-lg font-medium text-gray-800 mb-1">
+                                        Max Count
+                                    </label>
+                                    <input
+                                        type="number"
+                                        id="MaxCount"
+                                        name="MaxCount"
+                                        value={formData?.MaxCount}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-100"
+                                        required
+                                    />
+                                </div>
+
                                 {/* Parent Name */}
-                                {formData?.ParentId && <div>
+                                {formData?.ParentId && formData?.ParentName && <div>
                                     <label htmlFor="ParentName" className="block text-lg font-medium text-gray-800 mb-1">
                                         Parent Name
                                     </label>
@@ -141,7 +185,7 @@ function UpdateDocumentGroup() {
                                 </div>}
 
                                 {/* Office Name */}
-                                <div>
+                                <div className={!formData?.ParentId && !formData?.ParentName ? `md:col-span-2` : ``}>
                                     <label htmlFor="OfficeName" className="block text-lg font-medium text-gray-800 mb-1">
                                         Office Name
                                     </label>
@@ -158,8 +202,8 @@ function UpdateDocumentGroup() {
 
                                 {/* Buttons */}
                                 <div className="md:col-span-2 flex flex-wrap justify-end gap-4">
-                                    
-                                    {isLoading ? (<CLoader />) :(
+
+                                    {isLoading ? (<CLoader />) : (
                                         <button
                                             type="submit"
                                             onClick={handleUpdate}

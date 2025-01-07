@@ -105,7 +105,7 @@ function JustCard({ data, handleDataChange, toggleChildren, index, childIndex, l
 
         {/* Action Buttons */}
         {!isSeeAll && <div className="mt-6 flex justify-start gap-4">
-          {data.IsActive && (<Link to={`/documentGroup/update/${data.GroupId}`}>
+          {data.IsActive && (<Link to={`/documentGroup/update/${encodeURIComponent(tokenizedId)}`}>
             <button className="px-4 py-2 text-white bg-blue-600 text-sm rounded-md hover:bg-blue-500 transition duration-300">
               Edit
             </button>

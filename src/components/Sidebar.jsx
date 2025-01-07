@@ -120,6 +120,34 @@ const Sidebar = () => {
           
         </div>
 
+        {/* Fourth Section */}
+        <div className="bg-white rounded-xl shadow-lg mb-6 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+          <NavLink
+            to="/setting"
+            className={({ isActive }) =>
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
+                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
+              }`
+            }
+          >
+            <i className="bx bxs-cog mr-2 text-2xl" />
+            Setting
+          </NavLink>
+
+          <NavLink
+            to="/person"
+            className={({ isActive }) =>
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
+                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
+              }`
+            }
+          >
+            <i className="bx bxl-periscope mr-2 text-2xl" />
+            Person
+          </NavLink>
+          
+        </div>
+
         {/* Profile Section
         <div className="bg-white rounded-xl shadow-lg p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
           <NavLink

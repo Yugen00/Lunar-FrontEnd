@@ -3,37 +3,61 @@ import customAxios from '../../utils/http';
 import Loader from '../../utils/Loader';
 import { Link, useNavigate } from 'react-router-dom';
 import handleCatchError from '../../utils/handleCatchError';
-import DocumentGroupTableRow from './DocumentGroupTableRow';
-import DocumentGroupCard from './DocumentGroupCard';
+import PersonTableRow from './PersonTableRow';
+import PersonCard from './PersonCard';
 
-function GetDocumentGroup() {
+function GetPerson() {
   const navigate = useNavigate();
 
   const [datas, setDatas] = useState([]);
   const [isSeeAll] = useState(false);
   const [filteredData, setFilteredData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showBlocked, setShowBlocked] = useState("");
+  const [showArchive, setShowArchive] = useState("");
+  const [showInactive, setShowInActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(10);
   const [filterColumn, setFilterColumn] = useState("default");
   const [sortOrder, setSortOrder] = useState("default");
 
-  // Toggle blocked data view
-  const handleBlockList = () => {
-    showBlocked === "" ? setShowBlocked("/true") : setShowBlocked("");
+  // Toggle Archive data view
+  const handleArchive = () => {
+    setShowInActive(false);
+    showArchive === "" ? setShowArchive("/true") : setShowArchive("");
   };
 
+  // Toggle Inactive data view
+  const handleInactive = ()=>{
+    setShowArchive("");
+    setShowInActive(!showInactive);
+  }
+
   // Fetch data from the API
-  const fetchDocumentGroup = async () => {
+  const fetchPerson = async () => {
     try {
       setIsLoading(true);
-      const response = await customAxios.get(`/DocumentGroup/GetList${showBlocked}`);
+      const response = await customAxios.get(`/Person/GetList${showArchive}`);
       const dt = await response.data;
-      const buildedData= buildHierarchy(dt);
-      setDatas(buildedData);
-      setFilteredData(buildedData);
+
+      if(!showArchive){
+        let onlyInactiveData = dt?.filter(data => data?.LoginStatus !== true);
+        if(showInactive){
+          setDatas(onlyInactiveData);
+          setFilteredData(onlyInactiveData);
+          return;
+        }else{
+          let onlyActiveData = dt?.filter(data => data?.LoginStatus == true);
+          setDatas(onlyActiveData);
+          setFilteredData(onlyActiveData);
+        }
+      }
+      else{
+        let onlyArchivedData = dt?.filter(data => data?.EndDateAd !== null);
+        setDatas(onlyArchivedData);
+        setFilteredData(onlyArchivedData);
+      }
+      console.table(dt)
     } catch (error) {
       handleCatchError(error, navigate);
     } finally {
@@ -42,42 +66,32 @@ function GetDocumentGroup() {
   };
   // Callback function for child components
   const handleDataChange = () => {
-    fetchDocumentGroup(); // Refetch data when a change occurs
+    fetchPerson(); // Refetch data when a change occurs
   };
 
   useEffect(() => {
-    document.title = "DocumentGroup List";
-    fetchDocumentGroup();
-  }, [showBlocked]);
+    document.title = "Person List";
+    fetchPerson();
+  }, [showArchive,showInactive]);
 
   //reset all the filter and search columns when blocked and unbocked data toggled
   useEffect(() => {
     setFilterColumn('default');
     setSortOrder('default');
     setSearchQuery('');
-  }, [showBlocked]);
+    setDatas(datas);
+  }, [showArchive]);
   
   // Handle search input change
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-
-    const searchInItem = (item) => {
-      // Check the current item's properties
-      const matches = Object.values(item || {} ).some((value) =>{
-        return value?.toString().toLowerCase().includes(query)}
-      );
-      
-      // Check recursively in the children array, if present
-      if (item.children && Array.isArray(item.children)) {
-        const childMatches = item.children.some((child) => searchInItem(child));
-        return matches || childMatches;
-      }
-  
-      return matches;
-    };
-  
-    const filtered = datas.filter(searchInItem);
+    console.log(searchQuery)
+    const filtered = datas.filter((item) =>
+      Object.values(item).some((value) =>
+        value?.toString().toLowerCase().includes(query)
+      )
+    );
     setFilteredData(filtered);
     setCurrentPage(1);
   };
@@ -87,7 +101,7 @@ function GetDocumentGroup() {
     let updatedData = [...datas];
 
     if(sortOrder == "default" && filterColumn == "default"){
-      return 1;
+      return ;
     }
 
     if (filterColumn) {
@@ -114,31 +128,9 @@ function GetDocumentGroup() {
     setCurrentPage(1);
   };
 
-  const buildHierarchy = (data) => {
-    // Create a map of groups
-    const groupMap = {};
-    data.forEach(item => {
-      groupMap[item.GroupName] = { ...item, children: [] };
-    });
-  
-    // Build the hierarchy
-    const hierarchy = [];
-    data.forEach(item => {
-      if (item.ParentName) {
-        // If the item has a parent, add it to the parent's children
-        groupMap[item.ParentName]?.children.push(groupMap[item.GroupName]);
-      } else {
-        // If no parent, it's a top-level group
-        hierarchy.push(groupMap[item.GroupName]);
-      }
-    });
-  
-    return hierarchy;
-  };
-  
   useEffect(() => {
     handleFilterAndSort();
-  }, [filterColumn, sortOrder,searchQuery]);
+  }, [filterColumn, sortOrder, searchQuery,datas]);
 
   // Pagination logic
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -154,24 +146,34 @@ function GetDocumentGroup() {
       ) : (
         <div className="overflow-x-auto">
           <div className="flex justify-center min-[750px]:justify-end gap-8">
-            <Link to={`/DocumentGroup/insert`}>
-              <button className="bg-green-700 text-white p-4 rounded-xl  flex gap-2 items-center">
-                <i className="bx bx-plus-medical"></i> New Doc
+            <Link to={`/Person/insert`}>
+              <button className="bg-green-700 text-white p-2 gap-1 sm:p-4 rounded-xl  flex sm:gap-2 items-center">
+                <i className="bx bx-plus-medical"></i>Insert
               </button>
             </Link>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 className="rounded-xl w-4 h-4 cursor-pointer"
-                onChange={handleBlockList}
+                onChange={handleInactive}
                 onClick={handleFilterAndSort}
-                checked={showBlocked}
+                checked={showInactive}
               />
-              <p>Show Blocked</p>
+              <p className='text-[13px] sm:text-base'>Inactive</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="rounded-xl w-4 h-4 cursor-pointer"
+                onChange={handleArchive}
+                onClick={handleFilterAndSort}
+                checked={showArchive}
+              />
+              <p className='text-[13px] sm:text-base'>Show Archived</p>
             </div>
           </div>
           
-          <div className="text-3xl text-center">All Document Group</div>
+          <div className="text-3xl text-center">{!showArchive && !showInactive? `Active `:`${!showArchive? `Inactive `:`Archived `}`}Person List </div>
           <div className="flex justify-between items-center mt-4 mb-2 gap-4 flex-wrap w-full">
             <input
               type="text"
@@ -186,10 +188,9 @@ function GetDocumentGroup() {
               value={filterColumn}
             >
               <option value="default" disabled >--Filter by Column--</option>
-              <option value="GroupName">Group Name</option> 
-              <option value="GroupDescription">Group Description</option>
-              <option value="OfficeName">Office Name</option>
-              <option value="ParentName">Parent Name</option>
+              <option value="FullName">Full Name</option>
+              <option value="Sex">Sex</option>
+              <option value="FatherName">Father Name</option>
             </select>
             <select
               className="border p-2 rounded cursor-pointer"
@@ -202,31 +203,31 @@ function GetDocumentGroup() {
             </select>
           </div>
           {/* Table view for larger display FROM 750px */}
-          <table className="text-sm w-full divide-y border-spacing-x-4 hidden min-[750px]:table min-[750px]:table-auto divide-gray-200">
+          <table className="min-w-full divide-y border-spacing-x-4 hidden min-[750px]:table min-[750px]:table-fixed  divide-gray-200 ">
             <thead>
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.N</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group Name</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group Description</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Office Name</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent Name</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
+              <tr>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.N</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sex</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Father Name</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+              </tr>
+            </thead>
             <tbody className="bg-white divide-y divide-gray-200 overflow">
               {
                 currentRows.length === 0 ? (
                   <tr>
-                    <td className=" text-3xl bg-red-200 py-20 text-center rounded-3xl" colSpan={7}>
+                    <td className=" text-3xl bg-red-200 py-20 text-center rounded-3xl" colSpan={6}>
                       No data available
                     </td>
                   </tr>
                 ) : (
                 currentRows.map((data, index) => {
                     return (
-                      <DocumentGroupTableRow 
-                      key={data.GroupId} 
+                      <PersonTableRow 
+                      key={data.PersonId} 
                       index={indexOfFirstRow + index} 
                       data={data}
                       handleDataChange ={handleDataChange}
@@ -251,8 +252,8 @@ function GetDocumentGroup() {
               ) : (
                 currentRows.map((data, index) => {
                   return (
-                    <DocumentGroupCard
-                      key={data.GroupId}
+                    <PersonCard
+                      key={data.PersonId}
                       index={indexOfFirstRow + index}
                       data={data}
                       handleDataChange ={handleDataChange}
@@ -298,4 +299,5 @@ function GetDocumentGroup() {
     </>
   );
 }
-export default GetDocumentGroup
+
+export default GetPerson
