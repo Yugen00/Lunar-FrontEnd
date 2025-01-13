@@ -1,74 +1,132 @@
-import React, { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import customAxios from '../../utils/http';
 import { showToast } from '../../utils/ReactToast';
 import handleCatchError from '../../utils/handleCatchError';
 import DeleteItem from '../DeleteItem';
-import { createTokenizedID } from '../../utils/encryption';
+import UpdateFeeTopic from './UpdateFeeTopic';
+import SeeAllFeeTopic from './SeeAllFeeTopic';
 
-function FeeTopicTableRow({index,data,handleDataChange}) {
+function FeeTopicTableRow({ index, data, setOriginalData }) {
   const navigate = useNavigate();
+  const [isBeingProcessed, setIsBeingProcessed] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tokenizedId,setTokenizedId] = useState('');
-  
-  useEffect(()=>{
-    const tokenizedId = data?.TopicId ? createTokenizedID(data.TopicId.toString()) : '';
-    setTokenizedId(tokenizedId);
-  },[])
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [isSeeAllModalOpen, setSeeAllModalOpen] = useState(false);
 
-  const handleModal = ()=>{
+  //Hande modal boxes
+  const handleModal = () => {
     setIsModalOpen(!isModalOpen);
   }
-  const deleteHandle = async () =>{
+
+  const handleEditModal = () => {
+    setEditModalOpen(!isEditModalOpen);
+  }
+
+  const handleSeeAllModal = () => {
+    setSeeAllModalOpen(!isSeeAllModalOpen);
+  }
+
+  //handling the api request towards the endpoint
+  const deleteHandle = async () => {
     try {
+      setIsBeingProcessed(true);
       const response = await customAxios.delete(`/feeTopic/Block/${data.TopicId}`);
-      
-      if(response.status == 200){
-        setIsModalOpen(false);
-        showToast("Data Blocked Successfully","success");
-        handleDataChange();
+      if (response.status == 200) {
+        // Remove the deleted data from originalData
+        setOriginalData((prev) =>
+          prev.filter((item) => item.TopicId !== data.TopicId)
+        );
+
+        handleModal();
+        showToast("Data Blocked Successfully", "success");
       }
 
     } catch (error) {
-      handleCatchError(error,navigate)
+      handleCatchError(error, navigate)
+    }
+    finally {
+      setIsBeingProcessed(false);
     }
   }
+
+  const updateHandle = async (formData) => {
+    try {
+      setIsBeingProcessed(true);
+      const response = await customAxios.put('/feeTopic/update', formData);
+      if (response.status == 200) {
+        const updatedData = await response.data;
+
+        // Update the originalData with the updated entry
+        setOriginalData((prev) =>
+          prev.map((item) =>
+            item.TopicId === updatedData.TopicId ? updatedData : item
+          )
+        );
+
+        handleEditModal();
+        showToast("Fee Topic Updated Successfully", "success");
+      }
+    } catch (error) {
+      handleCatchError(error, navigate);
+    }
+    finally {
+      setIsBeingProcessed(false);
+    }
+  };
   return (
     <>
       <tr>
-          <td className="px-3 py-2 whitespace-nowrap">{index+1}</td>
-          
-          <td className="px-3 py-2 whitespace-nowrap">{data.TopicName}</td>
-          <td 
-            className="px-3 py-2 whitespace-nowrap cursor-pointer"
-            onClick={() => navigate(`/feeTopic/seeDetail/${encodeURIComponent(tokenizedId)}`)}
-            title="Click to see full details">
-              {data?.OfficeName.length > 15 ? (`${data.OfficeName.slice(0,15)} ...`):(data.OfficeName)}
-          </td>
-          
-          <td className="px-3 py-2 whitespace-nowrap ">
-            <span className={`p-4 w-full inline-flex justify-center text-base leading-5 font-semibold rounded-full ${data.IsActive?'bg-green-100':'bg-red-200'} text-black`}>{data.IsActive? "Active":"Blocked"}</span>
-          </td>
-          <td className="px-3 py-2 whitespace-nowrap">
+        <td className="px-3 py-2 whitespace-nowrap">{index + 1}</td>
+        <td className="px-3 py-2 whitespace-nowrap">
+          {data?.TopicName.length > 25 ? (`${data.TopicName.slice(0, 25)} ...`) : (data.TopicName)}
+        </td>
+        <td className="px-3 py-2 whitespace-nowrap text-center">
+          <span className={`px-6 py-4 w-fit inline-flex justify-center text-base leading-5 font-semibold rounded-full ${data.IsActive ? 'bg-green-100' : 'bg-red-200'} text-black`}>{data.IsActive ? "Active" : "Blocked"}</span>
+        </td>
+        <td className="px-3 py-2 whitespace-nowrap text-center">
           {
-             data.IsActive && (
-             <Link to={`/feeTopic/update/${encodeURIComponent(tokenizedId)}`}>
-              <button className="px-4 py-2 z-10 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500 focus:outline-none focus:shadow-outline-blue active:bg-blue-600 transition duration-150 ease-in-out">Edit</button>
-            </Link>)
+            data.IsActive && (
+              <button
+                title="Edit"
+                onClick={handleEditModal}
+                className="px-2 py-1 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500 focus:outline-none focus:shadow-outline-blue active:bg-blue-600 transition duration-150 ease-in-out">
+                <i className='bx bx-edit text-2xl' ></i>
+              </button>
+            )
           }
           {
             data.IsActive && (
-            <button onClick={handleModal} className={`ml-2 px-4 z-10 py-2 font-medium text-white bg-red-600 rounded-md hover:bg-red-500 focus:outline-none focus:shadow-outline-red active:bg-red-600 transition duration-150 ease-in-out`}>Block</button>)
+              <button
+                title="Block"
+                onClick={handleModal}
+                className={`ml-2 px-2 py-1 font-medium text-white bg-red-600 rounded-md hover:bg-red-500 focus:outline-none focus:shadow-outline-red active:bg-red-600 transition duration-150 ease-in-out`}>
+                <i className='bx bx-block text-2xl' ></i>
+              </button>)
           }
-          </td>
-  
+          {/* See all details */}
+          <button
+            title="See Details"
+            onClick={handleSeeAllModal}
+            className={`ml-2 px-2 py-1 font-medium text-white bg-green-600 rounded-md hover:bg-green-500 focus:outline-none focus:shadow-outline-green active:bg-green-600 transition duration-150 ease-in-out`}>
+            <i className='bx bx-info-circle text-2xl' ></i>
+          </button>
+        </td>
+
       </tr>
       <tr>
-          {/* Handaling delete modal */}
-          {isModalOpen && 
-          <td>
-            <DeleteItem isModalOpen={isModalOpen}  handleModal={handleModal} deleteHandle={deleteHandle} name={data?.TopicName}/>
-          </td>}
+        {isModalOpen && <td>
+          <DeleteItem handleModal={handleModal} deleteHandle={deleteHandle} name={data?.TopicName} isBeingProcessed={isBeingProcessed}/>
+        </td>}
+
+        {isEditModalOpen && <td>
+          <UpdateFeeTopic handleEditModal={handleEditModal} data={data} updateHandle={updateHandle} isBeingProcessed={isBeingProcessed} />
+        </td>}
+
+        {isSeeAllModalOpen && <td>
+            <SeeAllFeeTopic index={index} handleSeeAllModal={handleSeeAllModal} data={data} />
+        </td>}
+
       </tr>
     </>
   )

@@ -55,15 +55,6 @@ const Header = () => {
 
         {/* Icons and Profile */}
         <div className="flex items-center space-x-2 relative">
-          {/* <input
-            className="mx-4 w-full border rounded-md px-4 py-2"
-            type="text"
-            placeholder="Search"
-          />
-          <button className="hidden md:block p-2 text-indigo-800 hover:text-blue-700 transition duration-300">
-            <i className="bx bx-search text-2xl"></i>
-          </button> */}
-
           <img
             className="w-10 h-10 rounded-full transition-transform duration-300 hover:scale-110 object-cover cursor-pointer"
             src="https://i.pinimg.com/564x/de/0f/3d/de0f3d06d2c6dbf29a888cf78e4c0323.jpg"

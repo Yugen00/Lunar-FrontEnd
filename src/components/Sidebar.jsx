@@ -1,15 +1,7 @@
 import React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
-import { showToast } from "../utils/ReactToast";
+import { NavLink } from "react-router-dom";
 
 const Sidebar = () => {
-  const navigate = useNavigate();
-  
-  // const handleLogout = () => {
-  //   localStorage.removeItem("authToken");
-  //   showToast("Logged Out Successfully", "success");
-  //   navigate("/login");
-  // };
 
   return (
     <>
@@ -20,8 +12,7 @@ const Sidebar = () => {
           <NavLink
             to="/"
             className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold " : "text-gray-600"
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold " : "text-gray-600"
               }`
             }
           >
@@ -31,8 +22,7 @@ const Sidebar = () => {
           <NavLink
             to="/courseGroup"
             className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold" : "text-gray-600"
               }`
             }
           >
@@ -42,8 +32,7 @@ const Sidebar = () => {
           <NavLink
             to="/documentGroup"
             className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold text-[15px]" : "text-gray-600"
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold text-[15px]" : "text-gray-600"
               }`
             }
           >
@@ -57,8 +46,7 @@ const Sidebar = () => {
           <NavLink
             to="/role"
             className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold" : "text-gray-600"
               }`
             }
           >
@@ -69,8 +57,7 @@ const Sidebar = () => {
           <NavLink
             to="/office"
             className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold" : "text-gray-600"
               }`
             }
           >
@@ -81,15 +68,14 @@ const Sidebar = () => {
           <NavLink
             to="/personCategory"
             className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all text-[15px] duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold text-[15px]" : "text-gray-600"
+              `flex items-center cursor-pointer py-4 transition-all text-[15px] duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold text-[15px]" : "text-gray-600"
               }`
             }
           >
             <i className="bx bx-male-female mr-2 text-2xl" />
             Person Category
           </NavLink>
-          
+
         </div>
 
         {/* Third Section */}
@@ -97,8 +83,7 @@ const Sidebar = () => {
           <NavLink
             to="/certificateType"
             className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold" : "text-gray-600"
               }`
             }
           >
@@ -109,24 +94,34 @@ const Sidebar = () => {
           <NavLink
             to="/feeTopic"
             className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold" : "text-gray-600"
               }`
             }
           >
             <i className="bx bxs-credit-card-alt mr-2 text-2xl" />
             Fee Topic
           </NavLink>
-          
+
         </div>
 
         {/* Fourth Section */}
         <div className="bg-white rounded-xl shadow-lg mb-6 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+
+          <NavLink
+            to="/person"
+            className={({ isActive }) =>
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold" : "text-gray-600"
+              }`
+            }
+          >
+            <i className="bx bxl-periscope mr-2 text-2xl" />
+            Person
+          </NavLink>
+
           <NavLink
             to="/setting"
             className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
+              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${isActive ? "text-indigo-800 font-bold" : "text-gray-600"
               }`
             }
           >
@@ -134,52 +129,8 @@ const Sidebar = () => {
             Setting
           </NavLink>
 
-          <NavLink
-            to="/person"
-            className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
-              }`
-            }
-          >
-            <i className="bx bxl-periscope mr-2 text-2xl" />
-            Person
-          </NavLink>
-          
         </div>
 
-        {/* Profile Section
-        <div className="bg-white rounded-xl shadow-lg p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-          <NavLink
-            to="/profile"
-            className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
-              }`
-            }
-          >
-            <i className="bx bx-user mr-2 text-lg" />
-            Profile
-          </NavLink>
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `flex items-center cursor-pointer py-4 transition-all duration-300 hover:translate-x-1 ${
-                isActive ? "text-indigo-800 font-bold" : "text-gray-600"
-              }`
-            }
-          >
-            <i className="bx bx-wrench mr-2 text-lg" />
-            Settings
-          </NavLink>
-          <button
-            onClick={handleLogout}
-            className="flex items-center cursor-pointer text-gray-600 hover:text-indigo-800 py-4 transition-all duration-300 hover:translate-x-1"
-          >
-            <i className="bx bx-log-out mr-2 text-lg" />
-            Log out
-          </button>
-        </div> */}
       </aside>
     </>
   );

@@ -1,7 +1,6 @@
 import { showToast } from './ReactToast';
 
 const handleCatchError = (error,navigate) => {
-    console.log(error)
     if (error.code === 'ECONNABORTED') {
         showToast("The request timed out. Please try again later.","error")
         navigate("/login");
@@ -16,7 +15,8 @@ const handleCatchError = (error,navigate) => {
         navigate("/login");
     }
     else if(error.code === 'ERR_BAD_REQUEST'){
-        showToast("Error: Task incomplete", 'error');
+        console.log(error.response)
+        return showToast("Error: Task Incomplete",'error');
     }
     else {
         showToast("Something went wrong!", 'error');

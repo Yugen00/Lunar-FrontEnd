@@ -1,9 +1,9 @@
 import axios from "axios";
 
 const customAxios = axios.create({
-    //in vite process.env == import.meta.env
+    //in vite=> process.env == import.meta.env
     baseURL: import.meta.env.VITE_BASE_URL, // Base URL for all requests
-    timeout: 10000,
+    timeout: 15000,
     headers: {
       "Content-Type": "application/json",
     },

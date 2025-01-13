@@ -1,65 +1,39 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom';
-import DocumentGroupCard from './DocumentGroupCard';
-import handleCatchError from '../../utils/handleCatchError';
-import customAxios from '../../utils/http';
-import Loader from '../../utils/Loader';
-import { verifyTokenizedID } from '../../utils/encryption';
+import React from 'react'
 
-function SeeAllDocumentGroup() {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const [formData, setFormData] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isSeeAll] = useState(true);
-    const [decryptedId, setDecryptedId] = useState('');
-
-    const workWithToken = async () => {
-        try {
-            const decodedId = verifyTokenizedID(id)
-
-            if (!decodedId) {
-                throw new Error();
-            } else {
-                setDecryptedId(decodedId);
-                fetchDocumentGroup(decodedId);
-            }
-
-        } catch (error) {
-            showToast("Invalid request. Please try again later!", "error");
-            navigate("/error");
-        }
-    }
-    useEffect(() => {
-        workWithToken();
-    }, [id]);
-
-    //for fectching the data at first
-    const fetchDocumentGroup = async (decodedId) => {
-        try {
-            setIsLoading(true);
-            const response = await customAxios.get(`/documentGroup/getItem/${decodedId}`);
-            const dt = await response.data;
-            setFormData(dt);
-            setIsLoading(false);
-
-        }
-        catch (error) {
-            handleCatchError(error, navigate);
-        }
-        finally {
-            setIsLoading(false);
-        }
-    }
+function SeeAllDocumentGroup({ currentIndex, handleSeeAllModal, data }) {
 
     return (
         <>
-            {isLoading ? (<Loader />) : (
-                <div className="flex flex-col items-center justify-center h-full">
-                    <p className="text-2xl">Detail of Document Group</p>
-                    <DocumentGroupCard data={formData} isSeeAll={isSeeAll} />
+            <div className='fixed inset-0 z-20 bg-black bg-opacity-75 flex justify-center items-center'>
+                <div className='relative sm:max-w-[35%] sm:min-w-[25%] max-h-[90vh] flex justify-center items-center p-4 mt-[64px]'>
+                    {/* Card container */}
+                    <div className={`w-full bg-white border rounded-lg shadow-md p-6 m-4 text-base
+                        overflow-y-auto max-h-[80vh] scrollbar-thin scrollbar-thumb-indigo-200 scrollbar-track-transparent`}>
+                        <button
+                            className="absolute right-[11%] top-[10%] text-2xl text-indigo-700 font-extrabold hover:text-red-300"
+                            onClick={handleSeeAllModal}>
+                            X
+                        </button>
+                        <h3 className="text-2xl font-semibold text-gray-800">
+                            {` ${currentIndex}  ${data.GroupName}`}
+                        </h3>
+                        <div>
+                            <p className="text-gray-600 mt-2 break-words"><b>Description:</b> {data?.GroupDescription}</p>
+                            <p className="text-gray-600 mt-2"><b>Parent Name:</b> {data.ParentName || "Self"}</p>
+                            <p className="text-gray-600 mt-2"><b>Max Count:</b> {data.MaxCount}</p>
+                            <p className="text-gray-600 mt-2"><b>Allow Multiple Files Upload:</b> {data.AllowMultipleFilesUpload ? "True" : "False"}</p>
+                        </div>
+                        <div className="mt-4 flex justify-center">
+                            <span
+                                className={`inline-block  px-4 py-1 rounded-full text-white text-base font-medium ${data.IsActive ? "bg-green-500" : "bg-red-500"
+                                    }`}
+                            >
+                                {data.IsActive ? "Active" : "Blocked"}
+                            </span>
+                        </div>
+                    </div>
                 </div>
-            )}
+            </div>
         </>
     )
 }

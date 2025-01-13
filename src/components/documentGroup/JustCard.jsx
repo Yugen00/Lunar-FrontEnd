@@ -1,38 +1,99 @@
 import React, { useEffect, useState } from 'react'
 import DeleteItem from '../DeleteItem'
 import { Link, useNavigate } from 'react-router-dom';
-import { createTokenizedID } from '../../utils/encryption';
 import customAxios from '../../utils/http';
 import handleCatchError from '../../utils/handleCatchError';
 import { showToast } from '../../utils/ReactToast';
+import InsertDocumentGroup from './InsertDocumentGroup';
+import UpdateDocumentGroup from './UpdateDocumentGroup';
+import SeeAllDocumentGroup from './SeeAllDocumentGroup';
 
-function JustCard({ data, handleDataChange, toggleChildren, index, childIndex, level,isSeeAll }) {
+function JustCard({ data, setOriginalData, toggleChildren, index, childIndex, level }) {
   const navigate = useNavigate();
+  const [isBeingProcessed, setIsBeingProcessed] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tokenizedId, setTokenizedId] = useState('');
-  const [tokenizedName, setTokenizedName] = useState('');
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [isSubDocModalOpen, setSubDocModalOpen] = useState(false);
+  const [isSeeAllModalOpen, setSeeAllModalOpen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  useEffect(() => {
-    const tknId = data?.GroupId ? createTokenizedID(data.GroupId.toString()) : '';
-    const tknName = data?.GroupName ? createTokenizedID(data.GroupName.toString()) : '';
-    setTokenizedId(tknId);
-    setTokenizedName(tknName);
-  }, [])
-
+  //Hande modal boxes
   const handleModal = () => {
     setIsModalOpen(!isModalOpen);
-  };
+  }
 
+  const handleEditModal = () => {
+    setEditModalOpen(!isEditModalOpen);
+  }
+
+  const handleSubDocModal = () => {
+    setSubDocModalOpen(!isSubDocModalOpen);
+  }
+
+  const handleSeeAllModal = () => {
+    setSeeAllModalOpen(!isSeeAllModalOpen);
+  }
+
+  //handling the api request towards the endpoint
   const deleteHandle = async () => {
     try {
+      setIsBeingProcessed(true);
       const response = await customAxios.delete(`/documentGroup/Block/${data.GroupId}`);
       if (response.status == 200) {
-        setIsModalOpen(false);
+        // Remove the deleted GroupId (parent or child) from the originalData
+        const removeGroupId = (items, groupIdToDelete) => {
+          return items.filter((item) => {
+            if (item.GroupId === groupIdToDelete) {
+              // Remove the item if it matches the GroupId
+              return false;
+            }
+            if (item.children && item.children.length > 0) {
+              // Recursively process children
+              item.children = removeGroupId(item.children, groupIdToDelete);
+            }
+            return true; // Keep the item if it doesn't match
+          });
+        };
+
+        // Update the state with filtered data
+        setOriginalData((prev) => removeGroupId(prev, data.GroupId));
+
+
+        handleModal();
         showToast("Data Blocked Successfully", "success");
-        handleDataChange();
+      }
+
+    } catch (error) {
+      handleCatchError(error, navigate)
+    }
+    finally {
+      setIsBeingProcessed(false);
+    }
+  }
+
+  const updateHandle = async (formData) => {
+    try {
+      setIsBeingProcessed(true);
+      const response = await customAxios.put('/documentGroup/update', formData);
+      if (response.status == 200) {
+        const data = await response.data;
+        const updatedData = { ...data, children:[] }; // Adding children to the response data
+
+        // Update the originalData with the updated entry
+        setOriginalData((prev) =>
+          prev.map((item) =>
+            item.GroupId === updatedData.GroupId ? updatedData : item
+          )
+        );
+
+        handleEditModal();
+        showToast("Document Group Updated Successfully", "success");
       }
     } catch (error) {
       handleCatchError(error, navigate);
+    }
+    finally {
+      setIsBeingProcessed(false);
     }
   };
 
@@ -44,12 +105,17 @@ function JustCard({ data, handleDataChange, toggleChildren, index, childIndex, l
     });
     return indexString;
   };
-  
-  
+
+  useEffect(() => {
+    const idx = getHierarchicalIndex(index, childIndex);
+    setCurrentIndex(idx);
+  }, [])
+
+  // List of colors for each level
+  const levelColors = ['bg-white', 'bg-cyan-100', 'bg-yellow-100', 'bg-green-100'];
+
   // Get the background color based on the level
   const getBackgroundColor = (level) => {
-    // List of colors for each level
-    const levelColors = ['bg-white','bg-cyan-100', 'bg-yellow-100', 'bg-green-100'];
     return levelColors[level % levelColors.length]; // Loop through the list if there are more levels than colors
   };
 
@@ -59,40 +125,17 @@ function JustCard({ data, handleDataChange, toggleChildren, index, childIndex, l
   return (
     <>
       {/* Document Group Card */}
-      <div 
-        className={`p-6 m-4 ${isSeeAll ? ('sm:max-w-[50%]') : ('')} ${backgroundColor} border rounded-lg shadow-md hover:shadow-lg transition-all duration-300 `}
+      <div
+        className={`p-6 m-4 ${backgroundColor} border rounded-lg shadow-md hover:shadow-lg transition-all duration-300 `}
         style={{ marginLeft: `${level * 10}px` }}
       >
         <h3 className="text-2xl font-semibold text-gray-800">
-          {isSeeAll ? (data.GroupName) : (`${getHierarchicalIndex(index, childIndex)}   ${data.GroupName}`)}
+          {(`${currentIndex}   ${data.GroupName}`)}
         </h3>
-        {isSeeAll && <div>
-          <p className="text-gray-600 mt-2 break-words"><b>Description:</b> {data?.GroupDescription}</p>
-          <p className="text-gray-600 mt-2 break-words"><b>Office:</b> {data?.OfficeName}</p>
-        </div>
-        }
-        {!isSeeAll && <div>
-          <p
-            className=" text-gray-600 mt-2 text-ellipsis cursor-pointer"
-            onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
-            title="Click to see full details">
-            <b>Description:</b> {data?.GroupDescription?.length > 15 ? (`${data.GroupDescription.slice(0, 15)} ...`) : (data.GroupDescription)}
-          </p>
-          <p
-            className=" text-gray-600 mt-2 text-ellipsis cursor-pointer"
-            onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
-            title="Click to see full details">
-            <b>Office:</b> {data?.OfficeName?.length > 15 ? (`${data.OfficeName.slice(0, 15)} ...`) : (data.OfficeName)}
-          </p>
-        </div>
-        }
+        <p className=" text-gray-600 mt-2 text-ellipsis">
+          <b>Description:</b> {data?.GroupDescription?.length > 15 ? (`${data.GroupDescription.slice(0, 15)} ...`) : (data.GroupDescription)}
+        </p>
         <p className="text-gray-600 mt-2"><b>Parent Name:</b> {data.ParentName || "Self"}</p>
-        {/* For only viewAll */}
-        {isSeeAll && (<div>
-          <p className="text-gray-600 mt-2"><b>Max Count:</b> {data.MaxCount}</p>
-          <p className="text-gray-600 mt-2"><b>Allow Multiple Files Upload:</b> {data.AllowMultipleFilesUpload ? "True" : "False"}</p>
-
-        </div>)}
 
         <div className="mt-4">
           <span
@@ -104,53 +147,72 @@ function JustCard({ data, handleDataChange, toggleChildren, index, childIndex, l
         </div>
 
         {/* Action Buttons */}
-        {!isSeeAll && <div className="mt-6 flex justify-start gap-4">
-          {data.IsActive && (<Link to={`/documentGroup/update/${encodeURIComponent(tokenizedId)}`}>
-            <button className="px-4 py-2 text-white bg-blue-600 text-sm rounded-md hover:bg-blue-500 transition duration-300">
-              Edit
-            </button>
-          </Link>)}
-
-          {/* Block Button */}
-          {data.IsActive && data?.children?.length === 0 && (
-            <button
-              onClick={handleModal}
-              className="px-4 py-2 text-white bg-red-600 rounded-md text-[12px] hover:bg-red-500 transition duration-300"
-            >
-              Block
-            </button>
-          )}
+        <div className="mt-6 flex justify-start gap-1">
           {
             data.IsActive && (
-              <Link to={`/documentGroup/insert?id=${encodeURIComponent(tokenizedId)}&name=${encodeURIComponent(tokenizedName)}`}>
-                <button className="px-4 py-2 z-10 text-white text-[12px] bg-green-600 rounded-md hover:bg-green-500 focus:outline-none focus:shadow-outline-blue active:bg-blue-600 transition duration-150 ease-in-out">
-                  <i className='bx bx-plus-medical mr-1'></i> Sub-Doc
-                </button>
-              </Link>
-            )
+              <button
+                title="Edit"
+                onClick={handleEditModal}
+                className="px-2 py-1 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500 focus:outline-none focus:shadow-outline-blue active:bg-blue-600 transition duration-150 ease-in-out">
+                <i className='bx bx-edit text-2xl' ></i>
+              </button>)
           }
           {
-            data?.children?.length > 0 && (
-              <i className='ml-1 bx bxs-down-arrow cursor-pointer text-[12px] text-blue-800' onClick={toggleChildren}></i>
+            data.IsActive && data?.children?.length === 0 && (
+              <button
+                title="Block"
+                onClick={handleModal}
+                className={`px-2 py-1 font-medium text-white bg-red-600 rounded-md hover:bg-red-500 focus:outline-none focus:shadow-outline-red active:bg-red-600 transition duration-150 ease-in-out`}>
+                <i className='bx bx-block text-2xl' ></i>
+              </button>)
+          }
+
+          {
+            data.IsActive && (
+              <button
+                onClick={handleSubDocModal}
+                title="Add Sub-Doc"
+                className={`px-2 py-1 font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-500 focus:outline-none focus:shadow-outline-yellow active:bg-yellow-600 transition duration-150 ease-in-out`}>
+                <i className='bx bx-plus-medical text-2xl'></i>
+              </button>
             )
           }
-        </div>}
+          {/* See all details */}
+          <button
+            onClick={handleSeeAllModal}
+            title="See Details"
+            className={`px-2 py-1 font-medium text-white bg-green-600 rounded-md hover:bg-green-500 focus:outline-none focus:shadow-outline-green active:bg-green-600 transition duration-150 ease-in-out`}>
+            <i className='bx bx-info-circle text-2xl' ></i>
+          </button>
 
-
-        {/* For back in details page */}
-        {isSeeAll && <div className="mt-6 flex justify-start gap-4">
-          <Link to={`/documentGroup`}>
-            <button className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-500 transition duration-300">
-              Go Back
-            </button>
-          </Link>
+          {
+            data?.children?.length > 0 && (
+              <span className='ml-1 px-2 py-1 font-medium'>
+                <i
+                  title="View Children"
+                  className=' bx bxs-down-arrow cursor-pointer text-base text-blue-800 hover:text-blue-600'
+                  onClick={toggleChildren}></i>
+              </span>
+            )
+          }
         </div>
-        }
+
       </div>
 
       {/* Handaling delete modal */}
       {isModalOpen &&
-        <DeleteItem handleModal={handleModal} deleteHandle={deleteHandle} name={data?.GroupName} />
+        <DeleteItem handleModal={handleModal} deleteHandle={deleteHandle} name={data?.GroupName} isBeingProcessed={isBeingProcessed} />
+      }
+      {isEditModalOpen &&
+        <UpdateDocumentGroup handleEditModal={handleEditModal} data={data} updateHandle={updateHandle} isBeingProcessed={isBeingProcessed} />
+      }
+
+      {isSubDocModalOpen &&
+        <InsertDocumentGroup setOriginalData={setOriginalData} setInsertModalOpen={setSubDocModalOpen} ParentId={data?.GroupId} ParentName={data?.GroupName} />
+      }
+
+      {isSeeAllModalOpen &&
+        <SeeAllDocumentGroup currentIndex={currentIndex} handleSeeAllModal={handleSeeAllModal} data={data} />
       }
     </>
   )

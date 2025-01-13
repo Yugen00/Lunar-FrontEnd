@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import JustTableRow from './JustTableRow';
 
-function DocumentGroupTableRow({ data,index, handleDataChange, level = 0, childIndex=[] }) {
+function DocumentGroupTableRow({ data,index, setOriginalData, level = 0, childIndex=[] }) {
   const [showChildren, setShowChildren] = useState(false);
 
   const toggleChildren = () => {
@@ -14,7 +14,7 @@ function DocumentGroupTableRow({ data,index, handleDataChange, level = 0, childI
         data={data}
         index={index}
         childIndex={childIndex}
-        handleDataChange={handleDataChange}
+        setOriginalData={setOriginalData}
         toggleChildren={toggleChildren}
         level={level}
       />
@@ -27,7 +27,7 @@ function DocumentGroupTableRow({ data,index, handleDataChange, level = 0, childI
             data={child}
             index={index} // Same parent index
             childIndex={[...childIndex, childIdx]} // Append current child index to the parent's list
-            handleDataChange={handleDataChange}
+            setOriginalData={setOriginalData}
             level={level + 1} // Increase the level for nested children
           />
         ))

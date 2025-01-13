@@ -5,89 +5,100 @@ import { Link, useNavigate } from 'react-router-dom';
 import handleCatchError from '../../utils/handleCatchError';
 import PersonTableRow from './PersonTableRow';
 import PersonCard from './PersonCard';
+import InsertPerson from './InsertPerson';
 
 function GetPerson() {
   const navigate = useNavigate();
+  const [originalData, setOriginalData] = useState([]); // Store original data
+  const [filteredData, setFilteredData] = useState([]); //displayed data
 
-  const [datas, setDatas] = useState([]);
-  const [isSeeAll] = useState(false);
-  const [filteredData, setFilteredData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showArchive, setShowArchive] = useState("");
-  const [showInactive, setShowInActive] = useState(false);
+  const [ShowArchive, setShowArchive] = useState(false);
+  const [isArchiveFetched, setIsArchiveFetched] = useState(false); // Flag for blocked data fetching
+
+  const [isInsertModalOpen, setInsertModalOpen] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(10);
   const [filterColumn, setFilterColumn] = useState("default");
   const [sortOrder, setSortOrder] = useState("default");
 
-  // Toggle Archive data view
-  const handleArchive = () => {
-    setShowInActive(false);
-    showArchive === "" ? setShowArchive("/true") : setShowArchive("");
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
 
-  // Toggle Inactive data view
-  const handleInactive = ()=>{
-    setShowArchive("");
-    setShowInActive(!showInactive);
-  }
-
-  // Fetch data from the API
-  const fetchPerson = async () => {
+  // Fetch active data initially
+  const fetchActiveData = async () => {
     try {
       setIsLoading(true);
-      const response = await customAxios.get(`/Person/GetList${showArchive}`);
-      const dt = await response.data;
-
-      if(!showArchive){
-        let onlyInactiveData = dt?.filter(data => data?.LoginStatus !== true);
-        if(showInactive){
-          setDatas(onlyInactiveData);
-          setFilteredData(onlyInactiveData);
-          return;
-        }else{
-          let onlyActiveData = dt?.filter(data => data?.LoginStatus == true);
-          setDatas(onlyActiveData);
-          setFilteredData(onlyActiveData);
-        }
-      }
-      else{
-        let onlyArchivedData = dt?.filter(data => data?.EndDateAd !== null);
-        setDatas(onlyArchivedData);
-        setFilteredData(onlyArchivedData);
-      }
-      console.table(dt)
+      const response = await customAxios.get(`/person/GetList`);
+      const data = await response.data;
+      setOriginalData(data);
+      setFilteredData(data.filter((item) => !item.EndDateBs));
     } catch (error) {
       handleCatchError(error, navigate);
     } finally {
       setIsLoading(false);
     }
   };
-  // Callback function for child components
-  const handleDataChange = () => {
-    fetchPerson(); // Refetch data when a change occurs
+
+  // Fetch blocked data when toggled
+  const fetchArchiveData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await customAxios.get(`/person/GetList/true`);
+      const data = await response.data;
+      setOriginalData(data);
+      setFilteredData(data.filter((item) => item.EndDateBs)); // Show blocked data immediately
+      setIsArchiveFetched(true); // Mark blocked data as fetched
+    } catch (error) {
+      handleCatchError(error, navigate);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Toggle blocked data view
+  const handleArchive = () => {
+    if (!isArchiveFetched && !ShowArchive) {
+      fetchArchiveData();
+    } else {
+      const updatedData = ShowArchive
+        ? originalData.filter((item) => item.IsActive) // Show active
+        : originalData.filter((item) => !item.IsActive); // Show blocked
+      setFilteredData(updatedData);
+    }
+    setShowArchive(!ShowArchive);
+    setCurrentPage(1);
+  };
+
 
   useEffect(() => {
     document.title = "Person List";
-    fetchPerson();
-  }, [showArchive,showInactive]);
+    fetchActiveData();
+  }, []);
 
   //reset all the filter and search columns when blocked and unbocked data toggled
   useEffect(() => {
+    const updatedData = ShowArchive
+    ? originalData.filter((item) => item.EndDateBs) // Show Archive
+    : originalData.filter((item) => !item.EndDateBs); // Show active
+
+    setFilteredData(updatedData);
     setFilterColumn('default');
     setSortOrder('default');
     setSearchQuery('');
-    setDatas(datas);
-  }, [showArchive]);
-  
+  }, [ShowArchive, originalData]);
+
+
   // Handle search input change
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    console.log(searchQuery)
-    const filtered = datas.filter((item) =>
+
+    const baseData = ShowArchive
+      ? originalData.filter((item) => item.EndDateBs) // Show Archive
+      : originalData.filter((item) => !item.EndDateBs); // Show active
+
+    const filtered = baseData.filter((item) =>
       Object.values(item).some((value) =>
         value?.toString().toLowerCase().includes(query)
       )
@@ -98,14 +109,13 @@ function GetPerson() {
 
   // Handle column filter and sort
   const handleFilterAndSort = () => {
-    let updatedData = [...datas];
-
-    if(sortOrder == "default" && filterColumn == "default"){
-      return ;
+    let updatedData = [...filteredData];
+    if (sortOrder == "default" && filterColumn == "default") {
+      return 1;
     }
 
     if (filterColumn) {
-      updatedData = datas.filter((item) =>
+      updatedData = filteredData.filter((item) =>
         item[filterColumn]
           ?.toString()
           .toLowerCase()
@@ -130,7 +140,7 @@ function GetPerson() {
 
   useEffect(() => {
     handleFilterAndSort();
-  }, [filterColumn, sortOrder, searchQuery,datas]);
+  }, [filterColumn, sortOrder, searchQuery]);
 
   // Pagination logic
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -139,6 +149,7 @@ function GetPerson() {
 
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
+
   return (
     <>
       {isLoading ? (
@@ -146,34 +157,32 @@ function GetPerson() {
       ) : (
         <div className="overflow-x-auto">
           <div className="flex justify-center min-[750px]:justify-end gap-8">
-            <Link to={`/Person/insert`}>
-              <button className="bg-green-700 text-white p-2 gap-1 sm:p-4 rounded-xl  flex sm:gap-2 items-center">
-                <i className="bx bx-plus-medical"></i>Insert
-              </button>
-            </Link>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="rounded-xl w-4 h-4 cursor-pointer"
-                onChange={handleInactive}
-                onClick={handleFilterAndSort}
-                checked={showInactive}
-              />
-              <p className='text-[13px] sm:text-base'>Inactive</p>
-            </div>
+            
+            <button 
+              onClick={()=> setInsertModalOpen(true)}
+              className="bg-green-700 text-white p-2 gap-1 sm:p-4 rounded-xl  flex sm:gap-2 items-center">
+              <i className="bx bx-plus-medical"></i>Insert
+            </button>
+            {
+              isInsertModalOpen &&
+              <InsertPerson
+                  setOriginalData={setOriginalData}
+                  setInsertModalOpen={setInsertModalOpen} />
+            }
+
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 className="rounded-xl w-4 h-4 cursor-pointer"
                 onChange={handleArchive}
                 onClick={handleFilterAndSort}
-                checked={showArchive}
+                checked={ShowArchive}
               />
               <p className='text-[13px] sm:text-base'>Show Archived</p>
             </div>
           </div>
-          
-          <div className="text-3xl text-center">{!showArchive && !showInactive? `Active `:`${!showArchive? `Inactive `:`Archived `}`}Person List </div>
+
+          <div className="text-3xl text-center">{!ShowArchive ? `All ` : `Archived `}Person List </div>
           <div className="flex justify-between items-center mt-4 mb-2 gap-4 flex-wrap w-full">
             <input
               type="text"
@@ -191,6 +200,7 @@ function GetPerson() {
               <option value="FullName">Full Name</option>
               <option value="Sex">Sex</option>
               <option value="FatherName">Father Name</option>
+              <option value="LoginStatus">Login Status</option>
             </select>
             <select
               className="border p-2 rounded cursor-pointer"
@@ -198,8 +208,8 @@ function GetPerson() {
               value={sortOrder}
             >
               <option value="default" disabled>--Sort Order--</option>
-              <option value="asc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Ascending</option>
-              <option value="desc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Descending</option>
+              <option value="asc" disabled={filterColumn === "default"} className={filterColumn === "default" ? "text-red-400" : ""}>Ascending</option>
+              <option value="desc" disabled={filterColumn === "default"} className={filterColumn === "default" ? "text-red-400" : ""}>Descending</option>
             </select>
           </div>
           {/* Table view for larger display FROM 750px */}
@@ -209,9 +219,9 @@ function GetPerson() {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.N</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sex</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Father Name</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Father Name</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Login Status</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
@@ -219,18 +229,18 @@ function GetPerson() {
               {
                 currentRows.length === 0 ? (
                   <tr>
-                    <td className=" text-3xl bg-red-200 py-20 text-center rounded-3xl" colSpan={6}>
+                    <td className=" text-3xl bg-red-200 py-20 text-center rounded-3xl" colSpan={7}>
                       No data available
                     </td>
                   </tr>
                 ) : (
-                currentRows.map((data, index) => {
+                  currentRows.map((data, index) => {
                     return (
-                      <PersonTableRow 
-                      key={data.PersonId} 
-                      index={indexOfFirstRow + index} 
-                      data={data}
-                      handleDataChange ={handleDataChange}
+                      <PersonTableRow
+                        key={data.PersonId}
+                        index={indexOfFirstRow + index}
+                        data={data}
+                        setOriginalData={setOriginalData}
                       />
                     )
                   })
@@ -256,8 +266,8 @@ function GetPerson() {
                       key={data.PersonId}
                       index={indexOfFirstRow + index}
                       data={data}
-                      handleDataChange ={handleDataChange}
-                      isSeeAll={isSeeAll} />
+                      setOriginalData={setOriginalData}
+                      />
                   )
                 })
               )

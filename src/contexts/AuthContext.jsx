@@ -1,35 +1,45 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import customAxios from "../utils/http";
+import { showToast } from "../utils/ReactToast";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true); // Adding loading state
   const navigate = useNavigate();
 
-  useEffect(()=>{
-    const token = localStorage.getItem('authToken');
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
     if (!token) {
-      navigate('/login');
+      setLoading(false); 
+      navigate("/login");
+      showToast("Login Required!!","info")
     } else {
       validateToken(token);
     }
-  },[])
+  }, []);
 
-  const validateToken = async (token) =>{
-    const response = customAxios.get('/person/getItem/1');
-    if((await response).status == 200){
+  const validateToken = async (token) => {
+    try {
+      const response = await customAxios.get("/person/getItem/1");
+      if (response.status === 200) {
         setIsAuthenticated(true);
-        return;
+      } else {
+        logout(); // Call logout only if the token is invalid
+      }
+    } catch (error) {
+      showToast("Session Expired, Please login !!", 'warn');
+      logout();
+    } finally {
+      setLoading(false); // Loading complete after validation attempt
     }
-    //else call logout wh
-    logout();
-  }
+  };
 
-  const login = (token,displayName) => {
+  const login = (token, displayName) => {
     localStorage.setItem("authToken", token);
-    localStorage.setItem('DisplayName',displayName);    
+    localStorage.setItem("DisplayName", displayName);
     setIsAuthenticated(true);
   };
 
@@ -40,7 +50,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

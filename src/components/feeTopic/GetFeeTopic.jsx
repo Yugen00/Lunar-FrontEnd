@@ -1,37 +1,48 @@
-import React, { useEffect, useState } from 'react'
-import customAxios from '../../utils/http';
-import Loader from '../../utils/Loader';
-import { Link, useNavigate } from 'react-router-dom';
-import handleCatchError from '../../utils/handleCatchError';
-import FeeTopicTableRow from './FeeTopicTableRow';
-import FeeTopicCard from './FeeTopicCard';
+import React, { useEffect, useState } from "react";
+import customAxios from "../../utils/http";
+import Loader from "../../utils/Loader";
+import { Link, useNavigate } from "react-router-dom";
+import handleCatchError from "../../utils/handleCatchError";
+import FeeTopicTableRow from "./FeeTopicTableRow";
+import FeeTopicCard from "./FeeTopicCard";
+import InsertFeeTopic from "./InsertFeeTopic";
 
 function GetFeeTopic() {
   const navigate = useNavigate();
 
-  const [datas, setDatas] = useState([]);
-  const [isSeeAll] = useState(false);
+  const [originalData, setOriginalData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showBlocked, setShowBlocked] = useState("");
+  const [showBlocked, setShowBlocked] = useState(false);
+  const [isBlockedFetched, setIsBlockedFetched] = useState(false); // Flag for blocked data fetching
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(10);
   const [filterColumn, setFilterColumn] = useState("default");
   const [sortOrder, setSortOrder] = useState("default");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
+  const [isInsertModalOpen, setInsertModalOpen] = useState(false);
 
   // Toggle blocked data view
   const handleBlockList = () => {
-    showBlocked === "" ? setShowBlocked("/true") : setShowBlocked("");
+    if (!isBlockedFetched && !showBlocked) {
+      fetchBlockedData();
+    } else {
+      const updatedData = showBlocked
+        ? originalData.filter((item) => item.IsActive) // Show active
+        : originalData.filter((item) => !item.IsActive); // Show blocked
+      setFilteredData(updatedData);
+    }
+    setShowBlocked(!showBlocked);
+    setCurrentPage(1);
   };
 
-  // Fetch data from the API
+  // Fetch fee topics data initially
   const fetchFeeTopic = async () => {
     try {
       setIsLoading(true);
-      const response = await customAxios.get(`/FeeTopic/GetList${showBlocked}`);
+      const response = await customAxios.get(`/FeeTopic/GetList`);
       const dt = await response.data;
-      setDatas(dt);
+      setOriginalData(dt);
       setFilteredData(dt);
     } catch (error) {
       handleCatchError(error, navigate);
@@ -39,28 +50,54 @@ function GetFeeTopic() {
       setIsLoading(false);
     }
   };
-  // Callback function for child components
-  const handleDataChange = () => {
-    fetchFeeTopic(); // Refetch data when a change occurs
+
+  // Fetch blocked fee topics data
+  const fetchBlockedData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await customAxios.get(`/FeeTopic/GetList/true`);
+      const dt = await response.data;
+      setOriginalData(dt);
+      setFilteredData(dt.filter((item) => !item.IsActive)); // Show blocked data immediately
+      setIsBlockedFetched(true); // Mark blocked data as fetched
+    } catch (error) {
+      handleCatchError(error, navigate);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  useEffect(() => {
-    document.title = "FeeTopic List";
-    fetchFeeTopic();
-  }, [showBlocked]);
-
-  //reset all the filter and search columns when blocked and unbocked data toggled
+  // Reset all filters when blocked and unblocked data toggled
   useEffect(() => {
     setFilterColumn('default');
     setSortOrder('default');
     setSearchQuery('');
   }, [showBlocked]);
-  
+
+  useEffect(() => {
+    document.title = "FeeTopic List";
+    fetchFeeTopic();
+  }, []);
+
+  useEffect(() => {
+    
+    const updatedData = showBlocked
+      ? originalData.filter((item) => !item.IsActive) // Show blocked
+      : originalData.filter((item) => item.IsActive); // Show active
+
+    setFilteredData(updatedData);
+  }, [showBlocked, originalData]);
+
   // Handle search input change
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    const filtered = datas.filter((item) =>
+
+    const baseData = showBlocked
+      ? originalData.filter((item) => !item.IsActive) // Show blocked
+      : originalData.filter((item) => item.IsActive); // Show active
+
+    const filtered = baseData.filter((item) =>
       Object.values(item).some((value) =>
         value.toString().toLowerCase().includes(query)
       )
@@ -71,14 +108,14 @@ function GetFeeTopic() {
 
   // Handle column filter and sort
   const handleFilterAndSort = () => {
-    let updatedData = [...datas];
+    let updatedData = [...filteredData];
 
-    if(sortOrder == "default" && filterColumn == "default"){
-      return 1;
+    if (sortOrder === "default" && filterColumn === "default") {
+      return;
     }
 
     if (filterColumn) {
-      updatedData = datas.filter((item) =>
+      updatedData = filteredData.filter((item) =>
         item[filterColumn]
           ?.toString()
           .toLowerCase()
@@ -109,7 +146,6 @@ function GetFeeTopic() {
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentRows = filteredData.slice(indexOfFirstRow, indexOfLastRow);
-
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
   return (
@@ -119,25 +155,32 @@ function GetFeeTopic() {
       ) : (
         <div className="overflow-x-auto">
           <div className="flex justify-center min-[750px]:justify-end gap-8">
-            <Link to={`/FeeTopic/insert`}>
-              <button className="bg-green-700 text-white p-4 rounded-xl  flex gap-2 items-center">
-                <i className="bx bx-plus-medical"></i>Insert
-              </button>
-            </Link>
+            <button
+              onClick={() => setInsertModalOpen(true)}
+              className="bg-green-700 text-white p-4 rounded-xl flex gap-2 items-center"
+            >
+              <i className="bx bx-plus-medical"></i>Insert
+            </button>
+            {isInsertModalOpen && (
+              <InsertFeeTopic
+                setInsertModalOpen={setInsertModalOpen}
+                setOriginalData={setOriginalData}
+              />
+            )}
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 className="rounded-xl w-4 h-4 cursor-pointer"
                 onChange={handleBlockList}
-                onClick={handleFilterAndSort}
                 checked={showBlocked}
               />
               <p>Show Blocked</p>
             </div>
           </div>
-          
+
           <div className="text-3xl text-center">All Fee Topic List</div>
-          <div className="flex justify-between items-center mt-4 mb-2 gap-4 flex-wrap w-full">
+
+          <div className="flex justify-between items-center mt-4 gap-4 flex-wrap w-full">
             <input
               type="text"
               className="border p-2 rounded w-screen min-[440px]:w-auto"
@@ -145,87 +188,93 @@ function GetFeeTopic() {
               value={searchQuery}
               onChange={handleSearch}
             />
+
             <select
               className="border p-2 rounded cursor-pointer"
               onChange={(e) => setFilterColumn(e.target.value)}
               value={filterColumn}
             >
-              <option value="default" disabled >--Filter by Column--</option>
+              <option value="default" disabled>
+                --Filter by Column--
+              </option>
               <option value="TopicName">Topic Name</option>
-              <option value="OfficeName">Office Name</option>
             </select>
+
             <select
               className="border p-2 rounded cursor-pointer"
               onChange={(e) => setSortOrder(e.target.value)}
               value={sortOrder}
             >
-              <option value="default" disabled>--Sort Order--</option>
-              <option value="asc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Ascending</option>
-              <option value="desc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Descending</option>
+              <option value="default" disabled>
+                --Sort Order--
+              </option>
+              <option
+                value="asc"
+                disabled={filterColumn === "default"}
+                className={filterColumn === "default" ? "text-red-400" : ""}
+              >
+                Ascending
+              </option>
+              <option
+                value="desc"
+                disabled={filterColumn === "default"}
+                className={filterColumn === "default" ? "text-red-400" : ""}
+              >
+                Descending
+              </option>
             </select>
           </div>
-          {/* Table view for larger display FROM 750px */}
-          <table className="min-w-full divide-y border-spacing-x-4 hidden min-[750px]:table divide-gray-200 ">
+
+          {/* Table view for larger displays FROM 750px */}
+          <table className="min-w-full divide-y hidden min-[750px]:table divide-gray-200">
             <thead>
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.N</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fee Topic</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Office Name</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200 overflow">
-              {
-                currentRows.length === 0 ? (
-                  <tr>
-                    <td className=" text-3xl bg-red-200 py-20 text-center rounded-3xl" colSpan={5}>
-                      No data available
-                    </td>
-                  </tr>
-                ) : (
-                currentRows.map((data, index) => {
-                    return (
-                      <FeeTopicTableRow 
-                      key={data.TopicId} 
-                      index={indexOfFirstRow + index} 
-                      data={data}
-                      handleDataChange ={handleDataChange}
-                      />
-                    )
-                  })
-                )
-              }
-
+            <tbody className="bg-white divide-y divide-gray-200">
+              {currentRows.length === 0 ? (
+                <tr>
+                  <td className="text-3xl bg-red-200 py-20 text-center rounded-3xl" colSpan={5}>
+                    No data available
+                  </td>
+                </tr>
+              ) : (
+                currentRows.map((data, index) => (
+                  <FeeTopicTableRow
+                    key={data.TopicId}
+                    index={indexOfFirstRow + index}
+                    data={data}
+                    setOriginalData={setOriginalData}
+                  />
+                ))
+              )}
             </tbody>
           </table>
 
           {/* Card view for mobile */}
-          <div className="visible min-[750px]:hidden flex flex-col">
-            {
-              currentRows.length === 0 ? (
-                <div>
-                  <p className="text-3xl my-5 bg-red-200 py-20 text-center rounded-3xl">
-                    No data available
-                  </p>
-                </div>
-              ) : (
-                currentRows.map((data, index) => {
-                  return (
-                    <FeeTopicCard
-                      key={data.TopicId}
-                      index={indexOfFirstRow + index}
-                      data={data}
-                      handleDataChange ={handleDataChange}
-                      isSeeAll={isSeeAll} />
-                  )
-                })
-              )
-            }
+          <div className="min-[750px]:hidden flex flex-col">
+            {currentRows.length === 0 ? (
+              <p className="text-3xl bg-red-200 py-20 text-center rounded-3xl">
+                No data available
+              </p>
+            ) : (
+              currentRows.map((data, index) => (
+                <FeeTopicCard
+                  key={data.TopicId}
+                  index={indexOfFirstRow + index}
+                  data={data}
+                  setOriginalData={setOriginalData}
+                />
+              ))
+            )}
           </div>
 
-          {/* Pagination */}
-          <div className="flex justify-between items-center mt-4">
+           {/* Pagination */}
+           <div className="flex justify-between items-center mt-4">
             <button
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((prev) => prev - 1)}
@@ -259,4 +308,5 @@ function GetFeeTopic() {
     </>
   );
 }
+
 export default GetFeeTopic

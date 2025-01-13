@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import JustCard from "./JustCard";
 
-function DocumentGroupCard({ data,index, handleDataChange, level = 0, childIndex=[],isSeeAll }) {
+function DocumentGroupCard({ data,index, setOriginalData, level = 0, childIndex=[] }) {
   const [showChildren, setShowChildren] = useState(false);
   const toggleChildren = () => {
     setShowChildren(!showChildren);
@@ -13,10 +13,9 @@ function DocumentGroupCard({ data,index, handleDataChange, level = 0, childIndex
         data={data}
         index={index}
         childIndex={childIndex}
-        handleDataChange={handleDataChange}
+        setOriginalData={setOriginalData}
         toggleChildren={toggleChildren}
         level={level}
-        isSeeAll={isSeeAll}
       />
 
       {/* Render children recursively */}
@@ -27,9 +26,8 @@ function DocumentGroupCard({ data,index, handleDataChange, level = 0, childIndex
             data={child}
             index={index} // Same parent index
             childIndex={[...childIndex, childIdx]} // Append current child index to the parent's list
-            handleDataChange={handleDataChange}
+            setOriginalData={setOriginalData}
             level={level + 1} // Increase the level for nested children
-            isSeeAll={isSeeAll}
           />
         ))
       }

@@ -1,69 +1,36 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom';
-import handleCatchError from '../../utils/handleCatchError';
-import customAxios from '../../utils/http';
-import Loader from '../../utils/Loader';
-import FeeTopicCard from './FeeTopicCard';
-import { showToast } from '../../utils/ReactToast';
-import { verifyTokenizedID } from '../../utils/encryption';
 
-function SeeAllFeeTopic() {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const [formData, setFormData] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isSeeAll] = useState(true);
-    const [decryptedId,setDecryptedId]= useState('');
-        
-    const workWithToken = async() =>{
-        try {
-            const decodedId = verifyTokenizedID(id)
+function SeeAllFeeTopic({ handleSeeAllModal, data, index }) {
 
-            if (!decodedId) {
-                throw new Error();
-            } else {
-                setDecryptedId(decodedId);
-                fetchrole(decodedId);
-            }
-            
-        } catch (error) {
-            console.log(error)
-            showToast("Invalid request. Please try again later!", "error");
-            navigate("/error");
-        }
-    }
-    useEffect(() => {
-        workWithToken();
-    }, [id]);
+    return (
+        <>
+            <div className='fixed inset-0 z-20 bg-black bg-opacity-75 flex justify-center items-center'>
+                <div className={`p-6 m-4 sm:max-w-[50%] bg-white border rounded-lg shadow-md hover:shadow-lg transition-all duration-300 `}>
+                    <div className="flex justify-end -mt-4">
+                        <button
+                            className="text-2xl text-indigo-700 font-extrabold hover:text-red-300"
+                            onClick={handleSeeAllModal}>
+                            X
+                        </button>
+                    </div>
 
-    //for fectching the data at first
-    const fetchrole = async (decodedId) => {
-        try {
-            setIsLoading(true);
-            const response = await customAxios.get(`/feeTopic/getItem/${decodedId}`);
-            const dt = await response.data;
-            setFormData(dt);
-            setIsLoading(false);
-
-        }
-        catch (error) {
-            handleCatchError(error, navigate);
-        }
-        finally {
-            setIsLoading(false);
-        }
-    }
-
-  return (
-    <>
-        { isLoading? (<Loader/>):(
-            <div className="flex flex-col items-center justify-center h-full">
-                    <p className="text-2xl">Detail of Fee Topic </p>
-                    <FeeTopicCard data={formData} isSeeAll={isSeeAll}/>
+                    <h3 className="text-2xl font-semibold text-gray-800">
+                        {(`${index + 1}.   ${data.TopicName}`)}
+                    </h3>
+                    
+                    <div className="mt-4">
+                        <span
+                            className={`inline-block px-4 py-1 rounded-full text-white text-sm font-medium ${data.IsActive ? "bg-green-500" : "bg-red-500"
+                                }`}
+                        >
+                            {data.IsActive ? "Active" : "Blocked"}
+                        </span>
+                    </div>
+                    
+                </div>
             </div>
-        )}
-    </>
-  )
+        </>
+    )
 }
 
 export default SeeAllFeeTopic

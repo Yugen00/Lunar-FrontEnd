@@ -1,38 +1,38 @@
 import React, { useEffect, useState } from "react";
 import customAxios from "../../utils/http";
 import Loader from "../../utils/Loader";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import handleCatchError from "../../utils/handleCatchError";
 import CourseGroupTableRow from "./CourseGroupTableRow";
 import CourseGroupCard from "./CourseGroupCard";
+import InsertCourseGroup from "./InsertCourseGroup";
 
 function GetCourseGroup() {
   const navigate = useNavigate();
+  const [originalData, setOriginalData] = useState([]); // Store original data
+  const [filteredData, setFilteredData] = useState([]); //displayed data
 
-  const [datas, setDatas] = useState([]);
-  const [isSeeAll] = useState(false);
-  const [filteredData, setFilteredData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showBlocked, setShowBlocked] = useState("");
+  const [showBlocked, setShowBlocked] = useState(false);
+  const [isBlockedFetched, setIsBlockedFetched] = useState(false); // Flag for blocked data fetching
+
+  const [isInsertModalOpen, setInsertModalOpen] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(10);
   const [filterColumn, setFilterColumn] = useState("default");
   const [sortOrder, setSortOrder] = useState("default");
 
-  // Toggle blocked data view
-  const handleBlockList = () => {
-    showBlocked === "" ? setShowBlocked("/true") : setShowBlocked("");
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
 
-  // Fetch data from the API
-  const fetchCourseGroup = async () => {
+  // Fetch active data initially
+  const fetchActiveData = async () => {
     try {
       setIsLoading(true);
-      const response = await customAxios.get(`/courseGroup/GetList${showBlocked}`);
-      const dt = await response.data;
-      setDatas(dt);
-      setFilteredData(dt);
+      const response = await customAxios.get(`/courseGroup/GetList`);
+      const data = await response.data;
+      setOriginalData(data);
+      setFilteredData(data.filter((item) => item.IsActive));
     } catch (error) {
       handleCatchError(error, navigate);
     } finally {
@@ -40,28 +40,65 @@ function GetCourseGroup() {
     }
   };
 
-  // Callback function for child components
-  const handleDataChange = () => {
-    fetchCertificateType(); // Refetch data when a change occurs
+  // Fetch blocked data when toggled
+  const fetchBlockedData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await customAxios.get(`/courseGroup/GetList/true`);
+      const data = await response.data;
+      setOriginalData(data);
+      setFilteredData(data.filter((item) => !item.IsActive)); // Show blocked data immediately
+      setIsBlockedFetched(true); // Mark blocked data as fetched
+    } catch (error) {
+      handleCatchError(error, navigate);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Toggle blocked data view
+  const handleBlockList = () => {
+    if (!isBlockedFetched && !showBlocked) {
+      fetchBlockedData();
+    } else {
+      const updatedData = showBlocked
+        ? originalData.filter((item) => item.IsActive) // Show active
+        : originalData.filter((item) => !item.IsActive); // Show blocked
+      setFilteredData(updatedData);
+    }
+    setShowBlocked(!showBlocked);
+    setCurrentPage(1);
+  };
+
 
   useEffect(() => {
     document.title = "Course Group List";
-    fetchCourseGroup();
-  }, [showBlocked]);
+    fetchActiveData();
+  }, []);
 
   //reset all the filter and search columns when blocked and unbocked data toggled
-    useEffect(() => {
-      setFilterColumn('default');
-      setSortOrder('default');
-      setSearchQuery('');
-    }, [showBlocked]);
+  useEffect(() => {
+    const updatedData = showBlocked
+      ? originalData.filter((item) => !item.IsActive) // Show blocked
+      : originalData.filter((item) => item.IsActive); // Show active
+
+    setFilteredData(updatedData);
+    setFilterColumn('default');
+    setSortOrder('default');
+    setSearchQuery('');
+  }, [showBlocked, originalData]);
   
+
   // Handle search input change
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    const filtered = datas.filter((item) =>
+
+    const baseData = showBlocked
+      ? originalData.filter((item) => !item.IsActive) // Show blocked
+      : originalData.filter((item) => item.IsActive); // Show active
+
+    const filtered = baseData.filter((item) =>
       Object.values(item).some((value) =>
         value.toString().toLowerCase().includes(query)
       )
@@ -72,13 +109,13 @@ function GetCourseGroup() {
 
   // Handle column filter and sort
   const handleFilterAndSort = () => {
-    let updatedData = [...datas];
-    if(sortOrder == "default" && filterColumn == "default"){
+    let updatedData = [...filteredData];
+    if (sortOrder == "default" && filterColumn == "default") {
       return 1;
     }
 
     if (filterColumn) {
-      updatedData = datas.filter((item) =>
+      updatedData = filteredData.filter((item) =>
         item[filterColumn]
           ?.toString()
           .toLowerCase()
@@ -119,11 +156,17 @@ function GetCourseGroup() {
       ) : (
         <div className="overflow-x-auto">
           <div className="flex justify-center min-[750px]:justify-end gap-8">
-            <Link to={`/courseGroup/insert`}>
-              <button className="bg-green-700 text-white p-4 rounded-xl flex gap-2 items-center">
-                <i className="bx bx-plus-medical"></i>Insert
-              </button>
-            </Link>
+            <button
+              onClick={() => setInsertModalOpen(true)}
+              className="bg-green-700 text-white p-4 rounded-xl flex gap-2 items-center">
+              <i className="bx bx-plus-medical"></i>Insert
+            </button>
+            {
+              isInsertModalOpen &&
+              <InsertCourseGroup
+                  setOriginalData={setOriginalData}
+                  setInsertModalOpen={setInsertModalOpen} />
+            }
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -134,8 +177,10 @@ function GetCourseGroup() {
               <p>Show Blocked</p>
             </div>
           </div>
-          <div className="text-3xl text-center">All Course Group</div>
+          <div className="text-3xl text-center">{showBlocked ? "Blocked" : "Active"} Course Group</div>
+
           <div className="flex justify-between items-center mt-4 gap-4 flex-wrap w-full">
+            {/* Search box */}
             <input
               type="text"
               className="border p-2 rounded w-screen min-[473px]:w-auto"
@@ -143,6 +188,8 @@ function GetCourseGroup() {
               value={searchQuery}
               onChange={handleSearch}
             />
+
+            {/* Filter Select option */}
             <select
               className="border p-2 rounded cursor-pointer"
               onChange={(e) => setFilterColumn(e.target.value)}
@@ -150,19 +197,20 @@ function GetCourseGroup() {
             >
               <option value="default" disabled >--Filter by Column--</option>
               <option value="GroupName">Group Name</option>
-              <option value="OfficeName">Office Name</option>
             </select>
 
+            {/* Sort select Option */}
             <select
               className="border p-2 rounded cursor-pointer"
               onChange={(e) => setSortOrder(e.target.value)}
               value={sortOrder}
             >
               <option value="default" disabled>--Sort Order--</option>
-              <option value="asc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Ascending</option>
-              <option value="desc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Descending</option>
+              <option value="asc" disabled={filterColumn === "default"} className={filterColumn === "default" ? "text-red-400" : ""}>Ascending</option>
+              <option value="desc" disabled={filterColumn === "default"} className={filterColumn === "default" ? "text-red-400" : ""}>Descending</option>
             </select>
           </div>
+          {/* Desktop View */}
           <table className="min-w-full divide-y divide-gray-200 mt-4 hidden min-[750px]:table">
             <thead>
               <tr>
@@ -172,13 +220,10 @@ function GetCourseGroup() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Group Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Office Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Action
                 </th>
               </tr>
@@ -199,7 +244,7 @@ function GetCourseGroup() {
                     key={data.GroupId}
                     index={indexOfFirstRow + index}
                     data={data}
-                    handleDataChange ={handleDataChange}
+                    setOriginalData={setOriginalData}
                   />
                 ))
               )}
@@ -218,12 +263,11 @@ function GetCourseGroup() {
               ) : (
                 currentRows.map((data, index) => {
                   return (
-                    <CourseGroupCard 
-                    key={data.GroupId} 
-                    index={indexOfFirstRow + index} 
-                    data={data} 
-                    handleDataChange ={handleDataChange}
-                    isSeeAll={isSeeAll} />
+                    <CourseGroupCard
+                      key={data.GroupId}
+                      index={indexOfFirstRow + index}
+                      data={data}
+                      setOriginalData={setOriginalData} />
                   )
                 })
               )

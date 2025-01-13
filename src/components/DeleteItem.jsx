@@ -1,6 +1,7 @@
 import React from 'react'
+import CLoader from '../utils/CLoader'
 
-function DeleteItem({isModalOpen,handleModal,deleteHandle,name}) {
+function DeleteItem({handleModal,deleteHandle,name,isBeingProcessed=false}) {
   return (
     <>
         <div className='fixed inset-0 z-20 bg-black bg-opacity-75 flex justify-center items-center'>
@@ -11,24 +12,24 @@ function DeleteItem({isModalOpen,handleModal,deleteHandle,name}) {
                 </p>
                 <div className="flex justify-center gap-4">
                     {/* Cancel Button */}
-                    <button
+                    {!isBeingProcessed && <button
                         onClick={handleModal}
                         className="px-6 py-3 bg-green-700 text-white font-semibold rounded-lg shadow-md hover:bg-green-800 transition-all duration-300">
                         Cancel
-                    </button>
+                    </button>}
 
                     {/* Block Button */}
-                    <button
+                    {!isBeingProcessed && <button
                         onClick={deleteHandle}
                         className="px-6 py-3 bg-red-700 text-white font-semibold rounded-lg shadow-md hover:bg-red-800 transition-all duration-300"
                     >
                         Block
-                    </button>
+                    </button>}
+
+                    {isBeingProcessed && <CLoader/>}
                 </div>
             </div>
-        </div>
-       
-            
+        </div>     
     </>
   )
 }

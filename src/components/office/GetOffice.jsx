@@ -1,84 +1,113 @@
-import React, { useEffect, useState } from 'react'
-import customAxios from '../../utils/http';
-import Loader from '../../utils/Loader';
-import { Link, useNavigate } from 'react-router-dom';
-import handleCatchError from '../../utils/handleCatchError';
-import OfficeTableRow from './OfficeTableRow';
-import OfficeCard from './OfficeCard';
+import React, { useEffect, useState } from "react";
+import customAxios from "../../utils/http";
+import Loader from "../../utils/Loader";
+import { Link, useNavigate } from "react-router-dom";
+import handleCatchError from "../../utils/handleCatchError";
+import OfficeTableRow from "./OfficeTableRow";
+import OfficeCard from "./OfficeCard";
+import InsertOffice from "./InsertOffice";
 
 function GetOffice() {
   const navigate = useNavigate();
 
-  const [datas, setDatas] = useState([]);
-  const [isSeeAll] = useState(false);
-  const [filteredData, setFilteredData] = useState([]);
+  const [originalData, setOriginalData] = useState([]); // Store original data
+  const [filteredData, setFilteredData] = useState([]); // Displayed data
+  const [isInsertModalOpen,setInsertModalOpen] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
-  const [showBlocked, setShowBlocked] = useState("");
+  const [showBlocked, setShowBlocked] = useState(false);
+  const [isBlockedFetched, setIsBlockedFetched] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(10);
   const [filterColumn, setFilterColumn] = useState("default");
   const [sortOrder, setSortOrder] = useState("default");
 
-  // Toggle blocked data view
-  const handleBlockList = () => {
-    showBlocked === "" ? setShowBlocked("/true") : setShowBlocked("");
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
 
-  // Fetch data from the API
-  const fetchOffice = async () => {
+  // Fetch active data initially
+  const fetchActiveData = async () => {
     try {
       setIsLoading(true);
-      const response = await customAxios.get(`/Office/GetList${showBlocked}`);
-      const dt = await response.data;
-      setDatas(dt);
-      setFilteredData(dt);
+      const response = await customAxios.get(`/Office/GetList`);
+      const data = await response.data;
+      console.log(data)
+      setOriginalData(data);
+      setFilteredData(data.filter((item) => item.IsActive));
     } catch (error) {
       handleCatchError(error, navigate);
     } finally {
       setIsLoading(false);
     }
   };
-  // Callback function for child components
-  const handleDataChange = () => {
-    fetchOffice(); // Refetch data when a change occurs
+
+  // Fetch blocked data when toggled
+  const fetchBlockedData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await customAxios.get(`/Office/GetList/true`);
+      const data = await response.data;
+      setOriginalData(data);
+      setFilteredData(data.filter((item) => !item.IsActive));
+      setIsBlockedFetched(true);
+    } catch (error) {
+      handleCatchError(error, navigate);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Toggle blocked data view
+  const handleBlockList = () => {
+    if (!isBlockedFetched && !showBlocked) {
+      fetchBlockedData();
+    } else {
+      const updatedData = showBlocked
+        ? originalData.filter((item) => item.IsActive)
+        : originalData.filter((item) => !item.IsActive);
+      setFilteredData(updatedData);
+    }
+    setShowBlocked(!showBlocked);
+    setCurrentPage(1);
   };
 
   useEffect(() => {
     document.title = "Office List";
-    fetchOffice();
-  }, [showBlocked]);
+    fetchActiveData();
+  }, []);
 
-  //reset all the filter and search columns when blocked and unbocked data toggled
   useEffect(() => {
-    setFilterColumn('default');
-    setSortOrder('default');
-    setSearchQuery('');
-  }, [showBlocked]);
-  
-  // Handle search input change
+    const updatedData = showBlocked
+      ? originalData.filter((item) => !item.IsActive)
+      : originalData.filter((item) => item.IsActive);
+    setFilteredData(updatedData);
+    setFilterColumn("default");
+    setSortOrder("default");
+    setSearchQuery("");
+  }, [showBlocked, originalData]);
+
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    const filtered = datas.filter((item) =>
+
+    const baseData = showBlocked
+      ? originalData.filter((item) => !item.IsActive)
+      : originalData.filter((item) => item.IsActive);
+
+    const filtered = baseData.filter((item) =>
       Object.values(item).some((value) =>
-        value?.toString().toLowerCase().includes(query)
+        value.toString().toLowerCase().includes(query)
       )
     );
     setFilteredData(filtered);
     setCurrentPage(1);
   };
 
-  // Handle column filter and sort
   const handleFilterAndSort = () => {
-    let updatedData = [...datas];
+    let updatedData = [...filteredData];
 
-    if(sortOrder == "default" && filterColumn == "default"){
-      return 1;
-    }
-
-    if (filterColumn) {
-      updatedData = datas.filter((item) =>
+    if (filterColumn !== "default") {
+      updatedData = filteredData.filter((item) =>
         item[filterColumn]
           ?.toString()
           .toLowerCase()
@@ -86,14 +115,13 @@ function GetOffice() {
       );
     }
 
-    if (sortOrder && filterColumn) {
+    if (sortOrder !== "default" && filterColumn !== "default") {
       updatedData.sort((a, b) => {
         const valueA = a[filterColumn]?.toString().toLowerCase();
         const valueB = b[filterColumn]?.toString().toLowerCase();
-
-        if (valueA < valueB) return sortOrder === "asc" ? -1 : 1;
-        if (valueA > valueB) return sortOrder === "asc" ? 1 : -1;
-        return 0;
+        return sortOrder === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
       });
     }
 
@@ -105,7 +133,6 @@ function GetOffice() {
     handleFilterAndSort();
   }, [filterColumn, sortOrder, searchQuery]);
 
-  // Pagination logic
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
   const currentRows = filteredData.slice(indexOfFirstRow, indexOfLastRow);
@@ -119,24 +146,32 @@ function GetOffice() {
       ) : (
         <div className="overflow-x-auto">
           <div className="flex justify-center min-[750px]:justify-end gap-8">
-            <Link to={`/Office/insert`}>
-              <button className="bg-green-700 text-white p-4 rounded-xl  flex gap-2 items-center">
+              <button 
+                onClick={()=> setInsertModalOpen(true)}
+                className="bg-green-700 text-white p-4 rounded-xl flex gap-2 items-center">
                 <i className="bx bx-plus-medical"></i>Insert
               </button>
-            </Link>
+            {
+              isInsertModalOpen &&
+              <InsertOffice
+                  setOriginalData={setOriginalData}
+                  setInsertModalOpen={setInsertModalOpen} />
+            }
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 className="rounded-xl w-4 h-4 cursor-pointer"
                 onChange={handleBlockList}
-                onClick={handleFilterAndSort}
                 checked={showBlocked}
               />
               <p>Show Blocked</p>
             </div>
           </div>
-          
-          <div className="text-3xl text-center">All Office List</div>
+
+          <div className="text-3xl text-center">
+            {showBlocked ? "Blocked" : "Active"} Office List
+          </div>
+
           <div className="flex justify-between items-center mt-4 mb-2 gap-4 flex-wrap w-full">
             <input
               type="text"
@@ -150,7 +185,9 @@ function GetOffice() {
               onChange={(e) => setFilterColumn(e.target.value)}
               value={filterColumn}
             >
-              <option value="default" disabled >--Filter by Column--</option>
+              <option value="default" disabled>
+                --Filter by Column--
+              </option>
               <option value="OfficeName">Office Name</option>
               <option value="OfficeAddress">Office Address</option>
               <option value="OfficeEmail">Office Email</option>
@@ -162,45 +199,38 @@ function GetOffice() {
               value={sortOrder}
             >
               <option value="default" disabled>--Sort Order--</option>
-              <option value="asc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Ascending</option>
-              <option value="desc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Descending</option>
+              <option value="asc" disabled={filterColumn === "default"}>Ascending</option>
+              <option value="desc" disabled={filterColumn === "default"}>Descending</option>
             </select>
           </div>
-          {/* Table view for larger display FROM 750px */}
-          <table className="min-w-full divide-y border-spacing-x-4 hidden min-[750px]:table divide-gray-200 ">
+
+          <table className="min-w-full divide-y divide-gray-200 hidden min-[750px]:table">
             <thead>
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.N</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Office Name</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ">Office Address</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Office Address</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Office Email</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone Number</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200 overflow">
-              {
-                currentRows.length === 0 ? (
-                  <tr>
-                    <td className=" text-3xl bg-red-200  py-20 text-center rounded-3xl" colSpan={7}>
-                      No data available
-                    </td>
-                  </tr>
-                ) : (
-                currentRows.map((data, index) => {
-                    return (
-                      <OfficeTableRow 
-                      key={data.OfficeId} 
-                      index={indexOfFirstRow + index} 
-                      data={data}
-                      handleDataChange ={handleDataChange}
-                      />
-                    )
-                  })
-                )
-              }
-
+            <tbody className="bg-white divide-y divide-gray-200">
+              {currentRows.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>No data available</td>
+                </tr>
+              ) : (
+                currentRows.map((data, index) => (
+                  <OfficeTableRow
+                    key={data.OfficeId}
+                    index={indexOfFirstRow + index}
+                    data={data}
+                    setOriginalData={setOriginalData}
+                  />
+                ))
+              )}
             </tbody>
           </table>
 
@@ -220,8 +250,7 @@ function GetOffice() {
                       key={data.OfficeId}
                       index={indexOfFirstRow + index}
                       data={data}
-                      handleDataChange ={handleDataChange}
-                      isSeeAll={isSeeAll} />
+                      setOriginalData={setOriginalData} />
                   )
                 })
               )
@@ -257,10 +286,10 @@ function GetOffice() {
               Next
             </button>
           </div>
-        </div >
-      )
-      }
+        </div>
+      )}
     </>
   );
 }
-export default GetOffice
+
+export default GetOffice;

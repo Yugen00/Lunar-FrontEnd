@@ -13,7 +13,7 @@ const DashboardLayout = () => {
 
       <div className="flex flex-1 mt-16 overflow-hidden">
         <Sidebar />
-        <div className="flex-1 bg-gray-100 p-4 overflow-auto">
+        <div className="flex-1 bg-gray-100 p-4 overflow-auto scrollbar scrollbar-thumb-indigo-300 scrollbar-track-transparent">
           <Suspense fallback={<LazyLoader/>}>
             <Outlet/>
           </Suspense>

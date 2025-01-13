@@ -1,38 +1,99 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import customAxios from '../../utils/http';
 import { showToast } from '../../utils/ReactToast';
 import handleCatchError from '../../utils/handleCatchError';
 import DeleteItem from '../DeleteItem';
-import { createTokenizedID } from '../../utils/encryption';
+import UpdateDocumentGroup from './UpdateDocumentGroup';
+import SeeAllDocumentGroup from './SeeAllDocumentGroup';
+import InsertDocumentGroup from './InsertDocumentGroup';
 
-function JustTableRow({ data, handleDataChange, toggleChildren, index, childIndex, level }) {
+function JustTableRow({ data, setOriginalData, toggleChildren, index, childIndex, level }) {
   const navigate = useNavigate();
+  const [isBeingProcessed, setIsBeingProcessed] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tokenizedId, setTokenizedId] = useState('');
-  const [tokenizedName, setTokenizedName] = useState('');
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [isSubDocModalOpen, setSubDocModalOpen] = useState(false);
+  const [isSeeAllModalOpen, setSeeAllModalOpen] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  useEffect(() => {
-    const tknId = data?.GroupId ? createTokenizedID(data.GroupId.toString()) : '';
-    const tknName = data?.GroupName ? createTokenizedID(data.GroupName.toString()) : '';
-    setTokenizedId(tknId);
-    setTokenizedName(tknName);
-  }, [])
-
+  //Hande modal boxes
   const handleModal = () => {
     setIsModalOpen(!isModalOpen);
-  };
+  }
 
+  const handleEditModal = () => {
+    setEditModalOpen(!isEditModalOpen);
+  }
+
+  const handleSubDocModal = () => {
+    setSubDocModalOpen(!isSubDocModalOpen);
+  }
+
+  const handleSeeAllModal = () => {
+    setSeeAllModalOpen(!isSeeAllModalOpen);
+  }
+
+  //handling the api request towards the endpoint
   const deleteHandle = async () => {
     try {
+      setIsBeingProcessed(true);
       const response = await customAxios.delete(`/documentGroup/Block/${data.GroupId}`);
       if (response.status == 200) {
-        setIsModalOpen(false);
+        // Remove the deleted GroupId (parent or child) from the originalData
+        const removeGroupId = (items, groupIdToDelete) => {
+          return items.filter((item) => {
+            if (item.GroupId === groupIdToDelete) {
+              // Remove the item if it matches the GroupId
+              return false;
+            }
+            if (item.children && item.children.length > 0) {
+              // Recursively process children
+              item.children = removeGroupId(item.children, groupIdToDelete);
+            }
+            return true; // Keep the item if it doesn't match
+          });
+        };
+
+        // Update the state with filtered data
+        setOriginalData((prev) => removeGroupId(prev, data.GroupId));
+
+
+        handleModal();
         showToast("Data Blocked Successfully", "success");
-        handleDataChange();
+      }
+
+    } catch (error) {
+      handleCatchError(error, navigate)
+    }
+    finally {
+      setIsBeingProcessed(false);
+    }
+  }
+
+  const updateHandle = async (formData) => {
+    try {
+      setIsBeingProcessed(true);
+      const response = await customAxios.put('/documentGroup/update', formData);
+      if (response.status == 200) {
+        const data = await response.data;
+        const updatedData = { ...data, children:[] }; // Adding children to the response data
+
+        // Update the originalData with the updated entry
+        setOriginalData((prev) =>
+          prev.map((item) =>
+            item.GroupId === updatedData.GroupId ? updatedData : item
+          )
+        );
+
+        handleEditModal();
+        showToast("Document Group Updated Successfully", "success");
       }
     } catch (error) {
       handleCatchError(error, navigate);
+    }
+    finally {
+      setIsBeingProcessed(false);
     }
   };
 
@@ -44,6 +105,11 @@ function JustTableRow({ data, handleDataChange, toggleChildren, index, childInde
     });
     return indexString;
   };
+
+  useEffect(() => {
+    const idx = getHierarchicalIndex(index, childIndex);
+    setCurrentIndex(idx);
+  }, [])
 
   // List of colors for each level
   const levelColors = ['bg-white', 'bg-cyan-100', 'bg-yellow-100', 'bg-green-100'];
@@ -58,65 +124,68 @@ function JustTableRow({ data, handleDataChange, toggleChildren, index, childInde
 
   return (
     <>
-      <tr className={backgroundColor}>
+      <tr className={`${backgroundColor} text-base`}>
         <td className={`px-3 py-2 whitespace-nowrap  pl-[${level * 50}px]`}>
-          {getHierarchicalIndex(index, childIndex)} {/* Render hierarchical index */}
+          {currentIndex} {/* Render hierarchical index */}
         </td>
-        {/* <td className="px-3 py-2 whitespace-nowrap">{data.GroupName}</td> */}
-        <td className="px-3 py-2 text-ellipsis whitespace-nowrap cursor-pointer"
-          onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
-          title="Click to see full details">
-          {data?.GroupName?.length > 15 ? (`${data.GroupName.slice(0, 15)} ...`) : (data.GroupName)}
+        <td className="px-3 py-2 text-ellipsis whitespace-nowrap">
+          {data?.GroupName?.length > 10 ? (`${data.GroupName.slice(0, 10)} ...`) : (data.GroupName)}
         </td>
-        <td className="px-3 py-2 text-ellipsis whitespace-nowrap cursor-pointer"
-          onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
-          title="Click to see full details">
-          {data?.GroupDescription?.length > 15 ? (`${data.GroupDescription.slice(0, 15)} ...`) : (data.GroupDescription)}
+        <td className="px-3 py-2 text-ellipsis whitespace-nowrap">
+          {data?.GroupDescription?.length > 20 ? (`${data.GroupDescription.slice(0, 20)} ...`) : (data.GroupDescription)}
         </td>
-        <td className="px-3 py-2 whitespace-nowrap cursor-pointer"
-          onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
-          title="Click to see full details">
-          {data?.OfficeName?.length > 15 ? (`${data.OfficeName.slice(0, 15)} ...`) : (data.OfficeName)}
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap cursor-pointer"
-          onClick={() => navigate(`/documentGroup/seeDetail/${encodeURIComponent(tokenizedId)}`)}
-          title="Click to see full details">
+        <td className="px-3 py-2 whitespace-nowrap">
           {data?.ParentName?.length > 15 ? (`${data.ParentName.slice(0, 15)} ...`) : (data.ParentName || "Self")}
         </td>
-        <td className="px-3 py-2 whitespace-nowrap">
-          <span className={`p-4 w-full inline-flex justify-center text-base leading-5 font-semibold rounded-full ${data.IsActive ? 'bg-green-100' : 'bg-red-200'} text-black`}>
-            {data.IsActive ? "Active" : "Blocked"}
-          </span>
+        <td className="px-3 py-2 whitespace-nowrap text-center">
+          <span className={`px-6 py-4 w-fit inline-flex justify-center text-base leading-5 font-semibold rounded-full ${data.IsActive ? 'bg-green-100' : 'bg-red-200'} text-black`}>{data.IsActive ? "Active" : "Blocked"}</span>
         </td>
-        <td className="px-3 py-2 whitespace-nowrap">
+        <td className={`px-3 py-2 whitespace-nowrap  text-center`}>
           {
             data.IsActive && (
-              <Link to={`/documentGroup/update/${encodeURIComponent(tokenizedId)}`}>
-                <button className="px-4 py-2 z-10 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500 focus:outline-none focus:shadow-outline-blue active:bg-blue-600 transition duration-150 ease-in-out">
-                  Edit
-                </button>
-              </Link>
-            )
+              <button
+                title="Edit"
+                onClick={handleEditModal}
+                className="px-2 py-1 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500 focus:outline-none focus:shadow-outline-blue active:bg-blue-600 transition duration-150 ease-in-out">
+                <i className='bx bx-edit text-2xl' ></i>
+              </button>)
           }
           {
             data.IsActive && data?.children?.length === 0 && (
-              <button onClick={handleModal} className={`ml-2 px-4 z-10 py-2 font-medium text-white bg-red-600 rounded-md hover:bg-red-500 focus:outline-none focus:shadow-outline-red active:bg-red-600 transition duration-150 ease-in-out`}>
-                Block
+              <button
+                title="Block"
+                onClick={handleModal}
+                className={`ml-2 px-2 py-1 font-medium text-white bg-red-600 rounded-md hover:bg-red-500 focus:outline-none focus:shadow-outline-red active:bg-red-600 transition duration-150 ease-in-out`}>
+                <i className='bx bx-block text-2xl' ></i>
+              </button>)
+          }
+
+          {
+            data.IsActive && (
+              <button
+                onClick={handleSubDocModal}
+                title="Add Sub-Doc"
+                className={`ml-2 px-2 py-1 font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-500 focus:outline-none focus:shadow-outline-yellow active:bg-yellow-600 transition duration-150 ease-in-out`}>
+                <i className='bx bx-plus-medical text-2xl'></i>
               </button>
             )
           }
-          {
-            data.IsActive && (
-              <Link to={`/documentGroup/insert?id=${encodeURIComponent(tokenizedId)}&name=${encodeURIComponent(tokenizedName)}`}>
-                <button className="ml-2 px-4 py-2 z-10 font-medium text-white bg-green-600 rounded-md hover:bg-green-500 focus:outline-none focus:shadow-outline-blue active:bg-blue-600 transition duration-150 ease-in-out">
-                  <i className='bx bx-plus-medical mr-1'></i> Sub-Doc
-                </button>
-              </Link>
-            )
-          }
+          {/* See all details */}
+          <button
+            onClick={handleSeeAllModal}
+            title="See Details"
+            className={`ml-2 px-2 py-1 font-medium text-white bg-green-600 rounded-md hover:bg-green-500 focus:outline-none focus:shadow-outline-green active:bg-green-600 transition duration-150 ease-in-out`}>
+            <i className='bx bx-info-circle text-2xl' ></i>
+          </button>
+
           {
             data?.children?.length > 0 && (
-              <i className='ml-1 bx bxs-down-arrow cursor-pointer text-blue-800' onClick={toggleChildren}></i>
+              <span className='ml-1 px-2 py-1 font-medium'>
+                <i
+                  title="View Children"
+                  className=' bx bxs-down-arrow cursor-pointer text-base text-blue-800 hover:text-blue-600'
+                  onClick={toggleChildren}></i>
+              </span>
             )
           }
         </td>
@@ -126,8 +195,20 @@ function JustTableRow({ data, handleDataChange, toggleChildren, index, childInde
         {/* Handling delete modal */}
         {isModalOpen &&
           <td>
-            <DeleteItem isModalOpen={isModalOpen} handleModal={handleModal} deleteHandle={deleteHandle} name={data?.GroupName} />
+            <DeleteItem isModalOpen={isModalOpen} handleModal={handleModal} deleteHandle={deleteHandle} name={data?.GroupName} isBeingProcessed={isBeingProcessed} />
           </td>}
+
+        {isEditModalOpen && <td>
+          <UpdateDocumentGroup handleEditModal={handleEditModal} data={data} updateHandle={updateHandle} isBeingProcessed={isBeingProcessed} />
+        </td>}
+
+        {isSubDocModalOpen && <td>
+          <InsertDocumentGroup setOriginalData={setOriginalData} setInsertModalOpen={setSubDocModalOpen} ParentId={data?.GroupId} ParentName={data?.GroupName} />
+        </td>}
+
+        {isSeeAllModalOpen && <td>
+          <SeeAllDocumentGroup currentIndex={currentIndex} handleSeeAllModal={handleSeeAllModal} data={data} />
+        </td>}
       </tr>
     </>
   );

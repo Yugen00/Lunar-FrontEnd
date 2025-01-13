@@ -1,66 +1,104 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import customAxios from '../../utils/http';
 import Loader from '../../utils/Loader';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import handleCatchError from '../../utils/handleCatchError';
 import CertificateTypeTableRow from './CertificateTypeTableRow';
 import CertificateTypeCard from './CertificateTypeCard';
+import InsertCertificateType from './InsertCertificateType'; // Assuming you have this component for adding a certificate type.
 
 function GetCertificateType() {
   const navigate = useNavigate();
 
-  const [datas, setDatas] = useState([]);
-  const [isSeeAll] = useState(false);
-  const [filteredData, setFilteredData] = useState([]);
+  const [originalData, setOriginalData] = useState([]); // Store original data
+  const [filteredData, setFilteredData] = useState([]); // Displayed data
+
   const [isLoading, setIsLoading] = useState(false);
-  const [showBlocked, setShowBlocked] = useState("");
+  const [showBlocked, setShowBlocked] = useState(false);
+  const [isBlockedFetched, setIsBlockedFetched] = useState(false); // Flag for blocked data fetching
+
+  const [isInsertModalOpen, setInsertModalOpen] = useState(false); // Insert modal state
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(10);
   const [filterColumn, setFilterColumn] = useState("default");
   const [sortOrder, setSortOrder] = useState("default");
 
-  // Toggle blocked data view
-  const handleBlockList = () => {
-    showBlocked === "" ? setShowBlocked("/true") : setShowBlocked("");
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
 
-  // Fetch data from the API
-  const fetchCertificateType = async () => {
+  // Fetch active data initially
+  const fetchActiveData = async () => {
     try {
       setIsLoading(true);
-      const response = await customAxios.get(`/certificateType/GetList${showBlocked}`);
-      const dt = await response.data;
-      setDatas(dt);
-      setFilteredData(dt);
+      const response = await customAxios.get(`/certificateType/GetList`);
+      const data = await response.data;
+      setOriginalData(data);
+      console.log(data)
+      setFilteredData(data.filter((item) => item.IsActive));
     } catch (error) {
       handleCatchError(error, navigate);
     } finally {
       setIsLoading(false);
     }
   };
-  // Callback function for child components
-  const handleDataChange = () => {
-    fetchCertificateType(); // Refetch data when a change occurs
+
+  // Fetch blocked data when toggled
+  const fetchBlockedData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await customAxios.get(`/certificateType/GetList/true`);
+      const data = await response.data;
+      setOriginalData(data);
+      setFilteredData(data.filter((item) => !item.IsActive)); // Show blocked data immediately
+      setIsBlockedFetched(true); // Mark blocked data as fetched
+    } catch (error) {
+      handleCatchError(error, navigate);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Toggle blocked data view
+  const handleBlockList = () => {
+    if (!isBlockedFetched && !showBlocked) {
+      fetchBlockedData();
+    } else {
+      const updatedData = showBlocked
+        ? originalData.filter((item) => item.IsActive) // Show active
+        : originalData.filter((item) => !item.IsActive); // Show blocked
+      setFilteredData(updatedData);
+    }
+    setShowBlocked(!showBlocked);
+    setCurrentPage(1);
   };
 
   useEffect(() => {
     document.title = "Certificate Type List";
-    fetchCertificateType();
-  }, [showBlocked]);
+    fetchActiveData();
+  }, []);
 
-  //reset all the filter and search columns when blocked and unbocked data toggled
+  // Reset all the filter and search columns when blocked and unblocked data are toggled
   useEffect(() => {
+    const updatedData = showBlocked
+      ? originalData.filter((item) => !item.IsActive) // Show blocked
+      : originalData.filter((item) => item.IsActive); // Show active
+
+    setFilteredData(updatedData);
     setFilterColumn('default');
     setSortOrder('default');
     setSearchQuery('');
-  }, [showBlocked]);
-  
+  }, [showBlocked, originalData]);
+
   // Handle search input change
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    const filtered = datas.filter((item) =>
+
+    const baseData = showBlocked
+      ? originalData.filter((item) => !item.IsActive) // Show blocked
+      : originalData.filter((item) => item.IsActive); // Show active
+
+    const filtered = baseData.filter((item) =>
       Object.values(item).some((value) =>
         value.toString().toLowerCase().includes(query)
       )
@@ -71,14 +109,13 @@ function GetCertificateType() {
 
   // Handle column filter and sort
   const handleFilterAndSort = () => {
-    let updatedData = [...datas];
-
-    if(sortOrder == "default" && filterColumn == "default"){
-      return 1;
+    let updatedData = [...filteredData];
+    if (sortOrder === "default" && filterColumn === "default") {
+      return;
     }
 
     if (filterColumn) {
-      updatedData = datas.filter((item) =>
+      updatedData = filteredData.filter((item) =>
         item[filterColumn]
           ?.toString()
           .toLowerCase()
@@ -119,109 +156,111 @@ function GetCertificateType() {
       ) : (
         <div className="overflow-x-auto">
           <div className="flex justify-center min-[750px]:justify-end gap-8">
-            <Link to={`/CertificateType/insert`}>
-              <button className="bg-green-700 text-white p-4 rounded-xl  flex gap-2 items-center">
-                <i className="bx bx-plus-medical"></i>Insert
-              </button>
-            </Link>
+            <button
+              onClick={() => setInsertModalOpen(true)}
+              className="bg-green-700 text-white p-4 rounded-xl flex gap-2 items-center"
+            >
+              <i className="bx bx-plus-medical"></i>Insert
+            </button>
+            {isInsertModalOpen && (
+              <InsertCertificateType
+                setOriginalData={setOriginalData}
+                setInsertModalOpen={setInsertModalOpen}
+              />
+            )}
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 className="rounded-xl w-4 h-4 cursor-pointer"
                 onChange={handleBlockList}
-                onClick={handleFilterAndSort}
                 checked={showBlocked}
               />
               <p>Show Blocked</p>
             </div>
           </div>
-          
-          <div className="text-3xl text-center">All Certificate Type</div>
-          <div className="flex justify-between items-center mt-4 mb-2 gap-4 flex-wrap w-full">
+
+          <div className="text-3xl text-center">{showBlocked ? "Blocked" : "Active"} Certificate Type</div>
+
+          <div className="flex justify-between items-center mt-4 gap-4 flex-wrap w-full">
+            {/* Search box */}
             <input
               type="text"
-              className="border p-2 rounded w-screen min-[440px]:w-auto"
+              className="border p-2 rounded w-screen min-[473px]:w-auto"
               placeholder="Search..."
               value={searchQuery}
               onChange={handleSearch}
             />
+
+            {/* Filter Select option */}
             <select
               className="border p-2 rounded cursor-pointer"
               onChange={(e) => setFilterColumn(e.target.value)}
               value={filterColumn}
             >
-              <option value="default" disabled >--Filter by Column--</option>
+              <option value="default" disabled>--Filter by Column--</option>
               <option value="TypeName">Type Name</option>
-              <option value="OfficeName">Office Name</option>
             </select>
+
+            {/* Sort select Option */}
             <select
               className="border p-2 rounded cursor-pointer"
               onChange={(e) => setSortOrder(e.target.value)}
               value={sortOrder}
             >
               <option value="default" disabled>--Sort Order--</option>
-              <option value="asc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Ascending</option>
-              <option value="desc" disabled={filterColumn === "default"} className={filterColumn === "default"? "text-red-400":""}>Descending</option>
+              <option value="asc" disabled={filterColumn === "default"}>Ascending</option>
+              <option value="desc" disabled={filterColumn === "default"}>Descending</option>
             </select>
           </div>
-          {/* Table view for larger display FROM 750px */}
-          <table className="min-w-full divide-y border-spacing-x-4 hidden min-[750px]:table divide-gray-200 ">
+
+          {/* Table view for larger screens */}
+          <table className="min-w-full divide-y divide-gray-200 mt-4 hidden min-[750px]:table">
             <thead>
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.N</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type Name</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Office Name</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.N</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type Name</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200 overflow">
-              {
-                currentRows.length === 0 ? (
-                  <tr>
-                    <td className=" text-3xl bg-red-200 py-20 text-center rounded-3xl" colSpan={5}>
-                      No data available
-                    </td>
-                  </tr>
-                ) : (
-                currentRows.map((data, index) => {
-                    return (
-                      <CertificateTypeTableRow 
-                      key={data.TypeId} 
-                      index={indexOfFirstRow + index} 
-                      data={data}
-                      handleDataChange ={handleDataChange}
-                      />
-                    )
-                  })
-                )
-              }
-
+            <tbody className="bg-white divide-y divide-gray-200">
+              {currentRows.length === 0 ? (
+                <tr>
+                  <td className="text-3xl my-5 bg-red-200 py-20 text-center rounded-3xl" colSpan={5}>
+                    No data available
+                  </td>
+                </tr>
+              ) : (
+                currentRows.map((data, index) => (
+                  <CertificateTypeTableRow
+                    key={data.TypeId}
+                    index={indexOfFirstRow + index}
+                    data={data}
+                    setOriginalData={setOriginalData}
+                  />
+                ))
+              )}
             </tbody>
           </table>
 
-          {/* Card view for mobile */}
+          {/* Mobile view (cards) */}
           <div className="visible min-[750px]:hidden flex flex-col">
-            {
-              currentRows.length === 0 ? (
-                <div>
-                  <p className="text-3xl my-5 bg-red-200 py-20 text-center rounded-3xl">
-                    No data available
-                  </p>
-                </div>
-              ) : (
-                currentRows.map((data, index) => {
-                  return (
-                    <CertificateTypeCard
-                      key={data.TypeId}
-                      index={indexOfFirstRow + index}
-                      data={data}
-                      handleDataChange ={handleDataChange}
-                      isSeeAll={isSeeAll} />
-                  )
-                })
-              )
-            }
+            {currentRows.length === 0 ? (
+              <div>
+                <p className="text-3xl my-5 bg-red-200 py-20 text-center rounded-3xl">
+                  No data available
+                </p>
+              </div>
+            ) : (
+              currentRows.map((data, index) => (
+                <CertificateTypeCard
+                  key={data.TypeId}
+                  index={indexOfFirstRow + index}
+                  data={data}
+                  setOriginalData={setOriginalData}
+                />
+              ))
+            )}
           </div>
 
           {/* Pagination */}
@@ -253,11 +292,10 @@ function GetCertificateType() {
               Next
             </button>
           </div>
-        </div >
-      )
-      }
+        </div>
+      )}
     </>
   );
 }
 
-export default GetCertificateType
+export default GetCertificateType;

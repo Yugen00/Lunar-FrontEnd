@@ -23,7 +23,6 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form Submitted:", formData);
     try {
       setIsLoading(true);
       const response = await customAxios.post("/auth/login", formData);
@@ -56,7 +55,7 @@ const Login = () => {
       <div className="flex justify-center items-center h-screen">
         <form
           onSubmit={handleSubmit}
-          className="bg-white p-6 rounded shadow-md w-80"
+          className="bg-white p-6 rounded shadow-md w-80 border border-gray-200"
         >
           <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
 
