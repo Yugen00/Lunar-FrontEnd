@@ -1,1 +1,0 @@
-import{r as e,j as o,c as n}from"./index-C2DhrhZ5.js";function i(){async function t(){const s=await(await n.get("/person/getroles/1")).data;console.log(s)}return e.useEffect(()=>{t()},[]),o.jsx("div",{children:"This is setting"})}export{i as default};
