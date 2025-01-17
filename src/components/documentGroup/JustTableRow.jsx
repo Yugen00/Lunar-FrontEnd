@@ -77,14 +77,49 @@ function JustTableRow({ data, setOriginalData, toggleChildren, index, childIndex
       const response = await customAxios.put('/documentGroup/update', formData);
       if (response.status == 200) {
         const data = await response.data;
-        const updatedData = { ...data, children:[] }; // Adding children to the response data
+        const updatedData = { ...data, children: [] };
 
-        // Update the originalData with the updated entry
-        setOriginalData((prev) =>
-          prev.map((item) =>
-            item.GroupId === updatedData.GroupId ? updatedData : item
-          )
-        );
+        setOriginalData((prev) => {
+          const updateParent = (data) => {
+            return data.map((item) => {
+              if (item.GroupId === formData.GroupId) {
+                // It's the item we're updating, so we replace it with the updated data
+                return { ...updatedData, children: item.children || [] };
+              }
+
+              // If this item has children, we need to check those as well
+              if (item.children && item.children.length > 0) {
+                return { ...item, children: updateParent(item.children) }; // Recursively update children
+              }
+
+              return item;
+            });
+          };
+
+          if (formData.ParentId && formData.ParentName) {
+            // It's a child; we need to find its parent and update/add the child to the parent's children
+            return prev.map((item) => {
+              if (item.GroupId === formData.ParentId) {
+                // Parent found, update or add the child
+                const updatedChildren = updateParent(item.children || []);
+                const isChildPresent = updatedChildren.some(
+                  (child) => child.GroupId === formData.GroupId
+                );
+
+                if (!isChildPresent) {
+                  updatedChildren.push(updatedData); // Add the new child if it doesn't exist
+                }
+
+                return { ...item, children: updatedChildren };
+              }
+              return item;
+            });
+          } else {
+            // It's a parent, so we update the parent and preserve any existing children
+            return updateParent(prev); // Recursively update if there are any nested children
+          }
+        });
+
 
         handleEditModal();
         showToast("Document Group Updated Successfully", "success");

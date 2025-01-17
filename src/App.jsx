@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import './App.css';
-import { HashRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
 
 /*---- All lazy import so that page download in client system only when redirected -----*/
@@ -47,7 +47,7 @@ import AuthWrapper from './routes/AuthWrapper';
 function App() {
   return (
     <>
-      <Router>
+      <Router basename='/Lunar'>
         <AuthProvider>
           <ToastContainer position='top-right' autoClose={3000} /> {/* Global Toast Container */}
           <Routes>

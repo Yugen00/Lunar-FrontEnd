@@ -10,7 +10,7 @@ const handleCatchError = (error,navigate) => {
         showToast("Network Error. Please try again later.","error")
         navigate("/login");
     }
-    else if (error.response.status === 401) {
+    else if (error.response?.status === 401) {
         showToast("Session Expired, Please login !!", 'warn');
         navigate("/login");
     }
